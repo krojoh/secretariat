@@ -43,32 +43,75 @@ function generateClassesForDay(dayNum) {
     
     var html = '<h4 style="color: #2c5aa0; margin-bottom: 15px;">Classes for Day ' + dayNum + ':</h4>';
     
+    // Class database for dropdown
+    var classOptions = [
+        "Agility - Novice", "Agility - Open", "Agility - Excellent", "Agility - Masters",
+        "Jumpers - Novice", "Jumpers - Open", "Jumpers - Excellent", "Jumpers - Masters",
+        "FAST", "Time 2 Beat", "Standard", "Premier Standard", "Premier Jumpers",
+        "Wildcard", "Snooker", "Gamblers", "Touch N Go", "Jackpot"
+    ];
+    
+    // Judge database for dropdown
+    var judgeOptions = [
+        "Amanda Askell", "Andrew Anderson", "Barbara Brown", "Carol Chen", "David Davis",
+        "Emily Evans", "Frank Fisher", "Grace Garcia", "Henry Harris", "Isabel Johnson",
+        "Jack Jackson", "Karen King", "Lisa Lopez", "Michael Miller", "Nancy Nelson",
+        "Oliver Owen", "Patricia Parker", "Quinn Roberts", "Rachel Rodriguez", "Steven Smith",
+        "Teresa Taylor", "Ursula Upton", "Victor Valdez", "Wendy Williams", "Xavier Young"
+    ];
+    
     for (var c = 1; c <= numClasses; c++) {
+        // Build class dropdown options
+        var classDropdownHTML = '<option value="">-- Select Class --</option>';
+        classOptions.forEach(function(className) {
+            classDropdownHTML += '<option value="' + className + '">' + className + '</option>';
+        });
+        
+        // Build judge dropdown options
+        var judgeDropdownHTML = '<option value="">-- Select Judge --</option>';
+        judgeOptions.forEach(function(judgeName) {
+            judgeDropdownHTML += '<option value="' + judgeName + '">' + judgeName + '</option>';
+        });
+        
         html += `
             <div style="background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
                 <h5 style="margin: 0 0 15px 0; color: #856404;">Class ${c}</h5>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 15px;">
+                    
+                    <!-- 1. CLASS NAME (DROPDOWN) -->
                     <div class="form-group">
-                        <label>Class Name:</label>
-                        <input type="text" id="day${dayNum}_class${c}_name" placeholder="e.g., Novice A">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Class Name:</label>
+                        <select id="day${dayNum}_class${c}_name" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            ${classDropdownHTML}
+                        </select>
                     </div>
+                    
+                    <!-- 2. ROUNDS (DROPDOWN) -->
                     <div class="form-group">
-                        <label>Judge:</label>
-                        <input type="text" id="day${dayNum}_class${c}_judge" placeholder="Judge name">
-                    </div>
-                    <div class="form-group">
-                        <label>Round:</label>
-                        <select id="day${dayNum}_class${c}_round">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Rounds:</label>
+                        <select id="day${dayNum}_class${c}_round" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
                             <option value="1">Round 1</option>
                             <option value="2">Round 2</option>
                             <option value="3">Round 3</option>
+                            <option value="4">Round 4</option>
+                            <option value="5">Round 5</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 3. JUDGE (DROPDOWN) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Judge:</label>
+                        <select id="day${dayNum}_class${c}_judge" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            ${judgeDropdownHTML}
                         </select>
                     </div>
                 </div>
+                
+                <!-- FEO Option -->
                 <div style="margin-top: 15px;">
                     <label style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" id="day${dayNum}_class${c}_feo" style="margin-right: 8px;">
-                        <span>Offer FEO (For Exhibition Only)</span>
+                        <input type="checkbox" id="day${dayNum}_class${c}_feo" style="margin-right: 8px; transform: scale(1.2);">
+                        <span style="font-weight: bold; color: #2c5aa0;">Offer FEO (For Exhibition Only)</span>
                     </label>
                 </div>
             </div>
@@ -76,8 +119,8 @@ function generateClassesForDay(dayNum) {
     }
     
     container.innerHTML = html;
+    console.log('✅ Classes generated for Day ' + dayNum + ' with correct order: Class Name → Rounds → Judge');
 }
-
 // Fix missing update functions
 function updateCrossReferenceContext(trial) {
     var container = document.getElementById('selectedTrialCrossReference');
