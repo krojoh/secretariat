@@ -489,6 +489,8 @@ function editTrial(trialId) {
 }
 
 function populateTrialEditForm(trial) {
+    if (!trial) return;
+    
     // Basic trial information
     if (trial.name) {
         var trialNameField = document.getElementById('trialName');
@@ -503,6 +505,25 @@ function populateTrialEditForm(trial) {
     if (trial.location) {
         var locationField = document.getElementById('trialLocation');
         if (locationField) locationField.value = trial.location;
+    }
+    
+    // Set number of days and regenerate form
+    if (trial.days) {
+        var daysField = document.getElementById('trialDays');
+        if (daysField) {
+            daysField.value = trial.days;
+            // Trigger regeneration of days
+            if (typeof generateDays === 'function') {
+                generateDays();
+            }
+        }
+    }
+    
+    // Populate class configurations after form generation
+    if (trial.config && trial.config.length > 0) {
+        setTimeout(function() {
+            populateEditModeSelections(trial.config);
+        }, 1000); // Wait for form to be fully generated
     }
     
     console.log('✅ Trial form populated with original data');
