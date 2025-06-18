@@ -149,7 +149,7 @@ function validateTrialConfiguration() {
         return false;
     }
     
-    alert('✅ Trial configuration is valid!\n\nTrial: ' + trialName + '\nClasses: ' + trialConfig.length + '\nDays: ' + Math.max(...trialConfig.map(c => c.day)));
+    alert('✅ Trial configuration is valid!\n\nTrial: ' + trialName + '\nClasses: ' + trialConfig.length + '\nDays: ' + Math.max.apply(Math, trialConfig.map(function(c) { return c.day; })));
     return true;
 }
 
@@ -211,7 +211,7 @@ function importTrialConfig(input) {
                     }
                     
                     // Determine number of days
-                    var maxDay = Math.max(...trialConfig.map(c => c.day));
+                    var maxDay = Math.max.apply(Math, trialConfig.map(function(c) { return c.day; }));
                     document.getElementById('trialDays').value = maxDay;
                     
                     // Regenerate form
@@ -332,6 +332,7 @@ function addTrialTemplates() {
             <h3 style="margin: 0 0 15px 0; color: #2c5aa0;">🚀 Quick Trial Templates</h3>
             <p style="color: #666; margin-bottom: 15px;">Start with a common trial format:</p>
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button type="button" onclick="setupNoviceOpenUtilityTrial()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">📚 Novice/Open/Utility</button>
                 <button type="button" onclick="setupScentWorkTrial()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🐕 Scent Work</button>
                 <button type="button" onclick="setupCustomTrial()" style="background: #ffc107; color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">⚙️ Custom Setup</button>
             </div>
@@ -339,9 +340,12 @@ function addTrialTemplates() {
     `;
     
     // Insert after the main form fields
-    var trialDaysGroup = setupContainer.querySelector('input[id="trialDays"]').closest('.form-group');
+    var trialDaysGroup = setupContainer.querySelector('input[id="trialDays"]');
     if (trialDaysGroup) {
-        trialDaysGroup.insertAdjacentHTML('afterend', templatesHTML);
+        var parentGroup = trialDaysGroup.closest('.form-group');
+        if (parentGroup) {
+            parentGroup.insertAdjacentHTML('afterend', templatesHTML);
+        }
     }
 }
 
@@ -382,5 +386,4 @@ function addAutoSaveListeners() {
         field.addEventListener('input', autoSaveTrialConfig);
         field.addEventListener('change', autoSaveTrialConfig);
     });
-}="setupNoviceOpenUtilityTrial()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">📚 Novice/Open/Utility</button>
-                <button type="button" onclick
+}
