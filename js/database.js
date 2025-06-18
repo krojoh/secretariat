@@ -89,8 +89,35 @@ function showMainApp() {
             'Welcome, ' + currentUser.fullName + ' (' + currentUser.username + ')';
     }
     
-    // Add dashboard button
+    // Add dashboard buttons
     addDashboardButton();
+    addFullDashboardButton();
+}
+
+// Add "Go to Full Dashboard" button
+function addFullDashboardButton() {
+    var userBar = document.querySelector('.user-bar');
+    if (userBar && !document.getElementById('fullDashboardBtn')) {
+        var fullDashboardBtn = document.createElement('button');
+        fullDashboardBtn.id = 'fullDashboardBtn';
+        fullDashboardBtn.textContent = '🏠 Main Dashboard';
+        fullDashboardBtn.style.cssText = `
+            background: #6f42c1; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold;
+            margin-left: 10px;
+        `;
+        fullDashboardBtn.onclick = goToMainDashboard;
+        
+        var dashboardBtn = document.getElementById('dashboardBtn');
+        if (dashboardBtn) {
+            userBar.insertBefore(fullDashboardBtn, dashboardBtn);
+        }
+    }
 }
 
 function logout() {
