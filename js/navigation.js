@@ -204,7 +204,7 @@ function showAllTrialsDashboard() {
                                 ${entryCount} Entries
                             </div>
                             <button onclick="viewTrialDetails('${trialId}')" style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px;">👁️ View</button>
-                            <button onclick="viewEntries('${trialId}')" style="background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer;">📋 Entries</button>
+                            <button onclick="openTrialForEntries('${trialId}')" style="background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer;">📋 Entries</button>
                         </div>
                     </div>
                 </div>
@@ -381,6 +381,11 @@ function goToMainDashboard() {
     
     // Switch to trials tab to see full interface
     showTab('trials', document.querySelector('.nav-tab[onclick*="trials"]'));
+}
+
+// Make viewEntries use the new function
+function viewEntries(trialId) {
+    openTrialForEntries(trialId);
 }
 
 // Results display
