@@ -235,15 +235,152 @@ function viewEntries(trialId) {
     var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
     var trial = publicTrials[trialId];
     
-    if (trial && trial.results && trial.results.length > 0) {
-        var entriesText = 'Entries for "' + trial.name + '": \\n\\n';
-        trial.results.forEach(function(entry, index) {
-            entriesText += (index + 1) + '. ' + entry.callName + ' (' + entry.regNumber + ') - Handler: ' + entry.handler + '\\n';
-        });
-        alert(entriesText);
-    } else {
-        alert('No entries found for this trial.');
+    if (!trial) {
+        alert('Trial not found');
+        return;
     }
+    
+    // Set current trial
+    currentTrialId = trialId;
+    trialConfig = trial.config || [];
+    entryResults = trial.results || [];
+    
+    // Close dashboard
+    closeDashboard();
+    
+    // Show detailed entries modal
+    showDetailedEntriesModal(trial);
+}
+
+function showDetailedEntriesModal(trial) {
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    var entries = trial.results || [];
+    var entriesHTML = '';
+    
+    if (entries.length === 0) {
+        entriesHTML = '<p style="text-align: center; color: #666; padding: 40px;">No entries yet for this trial.</p>';
+    } else {
+        entriesHTML = `
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">#</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">Dog Name</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">Registration</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">Handler</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">Email</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">Classes</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        entries.forEach(function(entry, index) {
+            var classes = Array.isArray(entry.trials) ? 
+                entry.trials.map(function(t) { return t.class + ' R' + t.round; }).join(', ') : 
+                (entry.trialClass || 'N/A');
+            
+            entriesHTML += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">${index + 1}</td>
+                    <td style="padding: 12px; font-weight: bold; color: #2c5aa0;">${entry.callName}</td>
+                    <td style="padding: 12px;">${entry.regNumber}</td>
+                    <td style="padding: 12px;">${entry.handler}</td>
+                    <td style="padding: 12px;">${entry.email || 'N/A'}</td>
+                    <td style="padding: 12px; font-size: 12px;">${classes}</td>
+                </tr>
+            `;
+        });
+        
+        entriesHTML += '</tbody></table>';
+    }
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 1200px; width: 100%; max-height: 80vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📋 ${trial.name} - Entries Management</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">
+                    Total Entries: ${entries.length} | Club: ${trial.clubName || 'N/A'} | Owner: ${trial.owner}
+                </p>
+            </div>
+            <div style="padding: 30px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 30px; justify-content: center;">
+                    <button onclick="addNewEntryToTrial('${currentTrialId}')" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-weight: bold;">➕ Add New Entry</button>
+                    <button onclick="exportTrialEntries('${currentTrialId}')" style="background: linear-gradient(45deg, #ffc107, #fd7e14); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-weight: bold;">📤 Export Entries</button>
+                    <button onclick="goToMainDashboard()" style="background: linear-gradient(45deg, #6f42c1, #5a3bb0); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-weight: bold;">🏠 Main Dashboard</button>
+                    <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-weight: bold;">❌ Close</button>
+                </div>
+                
+                ${entriesHTML}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function addNewEntryToTrial(trialId) {
+    // Close current modal
+    var modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) modal.remove();
+    
+    // Set trial and show entry form
+    currentTrialId = trialId;
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var trial = publicTrials[trialId];
+    trialConfig = trial.config || [];
+    entryResults = trial.results || [];
+    
+    // Show the entry form
+    showJuneLeagueEntryForm();
+}
+
+function exportTrialEntries(trialId) {
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var trial = publicTrials[trialId];
+    var entries = trial.results || [];
+    
+    if (entries.length === 0) {
+        alert('No entries to export for this trial.');
+        return;
+    }
+    
+    var csv = 'Trial Name,Dog Name,Registration,Handler,Email,Classes,Entry Date,Confirmation Number\\n';
+    
+    entries.forEach(function(entry) {
+        var classes = Array.isArray(entry.trials) ? 
+            entry.trials.map(function(t) { return t.class + ' Round ' + t.round + ' (' + (t.type || 'regular') + ')'; }).join('; ') : 
+            (entry.trialClass || 'N/A');
+        
+        csv += '"' + trial.name + '","' + entry.callName + '","' + entry.regNumber + '","' + entry.handler + '","' + (entry.email || 'N/A') + '","' + classes + '","' + (entry.entryDate || 'N/A') + '","' + (entry.confirmationNumber || 'N/A') + '"\\n';
+    });
+    
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (trial.name || 'trial').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_entries.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    alert('✅ Exported ' + entries.length + ' entries for ' + trial.name + '!');
+}
+
+function goToMainDashboard() {
+    // Close any open modals
+    var modals = document.querySelectorAll('div[style*="position: fixed"]');
+    modals.forEach(function(modal) {
+        modal.remove();
+    });
+    
+    // Switch to trials tab to see full interface
+    showTab('trials', document.querySelector('.nav-tab[onclick*="trials"]'));
 }
 
 // Results display
