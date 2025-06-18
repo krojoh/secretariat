@@ -1,7 +1,7 @@
 {
   "name": "dog-sports-league",
   "version": "1.0.0",
-  "homepage": "https://YOUR_USERNAME.github.io/dog-sports-league",
+  "homepage": "homepage": "https://krogh.github.io/secretariat",
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
