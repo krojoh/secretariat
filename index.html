@@ -282,6 +282,8 @@
                     <button onclick="saveTrialUpdates()">💾 Save Trial Configuration</button>
                     <button onclick="validateTrialConfiguration()">✅ Validate Configuration</button>
                     <button onclick="exportTrialConfig()">📤 Export Configuration</button>
+                    <button onclick="document.getElementById('importFile').click()">📁 Import Configuration</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importTrialConfig(this)">
                 </div>
                 
                 <!-- Entry Form Links Section -->
@@ -362,294 +364,22 @@
         </div>
     </div>
 
-    <!-- Essential JavaScript Functions -->
+    <!-- JavaScript Files -->
+    <script src="js/database.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/entry-forms.js"></script>
+    <script src="js/trial-setup.js"></script>
+
+    <!-- Initialize Application -->
     <script>
-        // Global variables
-        var currentUser = null;
-        var trialConfig = [];
-        var entryResults = [];
-        var currentTrialId = null;
-
-        // Authentication functions
-        function showAuthTab(tab, element) {
-            var tabs = document.querySelectorAll('.auth-tab');
-            for (var i = 0; i < tabs.length; i++) {
-                tabs[i].classList.remove('active');
-            }
-            element.classList.add('active');
-            
-            var forms = document.querySelectorAll('.auth-form');
-            for (var i = 0; i < forms.length; i++) {
-                forms[i].classList.remove('active');
-            }
-            document.getElementById(tab + 'Form').classList.add('active');
-        }
-
-        function handleLogin(event) {
-            event.preventDefault();
-            
-            var username = document.getElementById('loginUsername').value;
-            var password = document.getElementById('loginPassword').value;
-            
-            var users = JSON.parse(localStorage.getItem('trialUsers') || '{}');
-            
-            if (users[username] && users[username].password === password) {
-                currentUser = users[username];
-                showMainApp();
-                alert('Login successful!');
-            } else {
-                alert('Invalid username or password');
-            }
-        }
-
-        function handleRegister(event) {
-            event.preventDefault();
-            
-            var username = document.getElementById('regUsername').value;
-            var password = document.getElementById('regPassword').value;
-            var confirmPassword = document.getElementById('regConfirmPassword').value;
-            var fullName = document.getElementById('regFullName').value;
-            var email = document.getElementById('regEmail').value;
-            
-            if (password !== confirmPassword) {
-                alert('Passwords do not match');
-                return;
-            }
-            
-            var users = JSON.parse(localStorage.getItem('trialUsers') || '{}');
-            
-            if (users[username]) {
-                alert('Username already exists');
-                return;
-            }
-            
-            users[username] = {
-                username: username,
-                password: password,
-                fullName: fullName,
-                email: email,
-                created: new Date().toISOString()
-            };
-            
-            localStorage.setItem('trialUsers', JSON.stringify(users));
-            alert('Registration successful! Please login.');
-            showAuthTab('login', document.querySelector('.auth-tab'));
-        }
-
-        function showMainApp() {
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('mainApp').classList.remove('hidden');
-            
-            if (currentUser) {
-                document.getElementById('userInfo').textContent = 
-                    'Welcome, ' + currentUser.fullName + ' (' + currentUser.username + ')';
-            }
-            
-            loadUserTrials();
-        }
-
-        function logout() {
-            currentUser = null;
-            document.getElementById('authOverlay').style.display = 'flex';
-            document.getElementById('mainApp').classList.add('hidden');
-        }
-
-        // Navigation function
-        function showTab(tabName, element) {
-            var tabContents = document.querySelectorAll('.tab-content');
-            for (var i = 0; i < tabContents.length; i++) {
-                tabContents[i].classList.remove('active');
-            }
-            
-            var navTabs = document.querySelectorAll('.nav-tab');
-            for (var i = 0; i < navTabs.length; i++) {
-                navTabs[i].classList.remove('active');
-            }
-            
-            if (document.getElementById(tabName)) {
-                document.getElementById(tabName).classList.add('active');
-            }
-            
-            if (element) {
-                element.classList.add('active');
-            }
-
-            // Load tab-specific content
-            if (tabName === 'trials') {
-                loadUserTrials();
-            }
-        }
-
-        // Trial management functions
-        function loadUserTrials() {
-            var container = document.getElementById('trialsContainer');
-            if (!container) return;
-            
-            var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
-            var trialIds = Object.keys(userTrials);
-            
-            if (trialIds.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px;">
-                        <h3>No Trials Found</h3>
-                        <p>You haven't created any trials yet.</p>
-                        <button onclick="createNewTrial()">Create New Trial</button>
-                    </div>
-                `;
-            } else {
-                var html = '<h3>My Trials</h3>';
-                
-                trialIds.forEach(function(trialId) {
-                    var trial = userTrials[trialId];
-                    html += `
-                        <div style="background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="font-weight: bold; color: #2c5aa0;">${trial.name || 'Unnamed Trial'}</div>
-                                    <div style="font-size: 14px; color: #666;">
-                                        Created: ${new Date(trial.created).toLocaleDateString()} | 
-                                        Classes: ${trial.config ? trial.config.length : 0}
-                                    </div>
-                                </div>
-                                <div>
-                                    <button onclick="editTrial('${trialId}')" style="background: #28a745; padding: 8px 15px;">Edit</button>
-                                    <button onclick="deleteTrial('${trialId}')" style="background: #dc3545; padding: 8px 15px;">Delete</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '<div style="text-align: center; margin-top: 20px;"><button onclick="createNewTrial()">Create New Trial</button></div>';
-                container.innerHTML = html;
-            }
-        }
-
-        function createNewTrial() {
-            currentTrialId = 'trial_' + Date.now();
-            trialConfig = [];
-            entryResults = [];
-            
-            showTab('setup', document.querySelector('.nav-tab'));
-            alert('New trial created! Configure the trial details in the Setup tab.');
-        }
-
-        function editTrial(trialId) {
-            currentTrialId = trialId;
-            var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
-            var trial = userTrials[trialId];
-            
-            if (trial) {
-                trialConfig = trial.config || [];
-                entryResults = trial.results || [];
-                
-                if (trial.name) document.getElementById('trialName').value = trial.name;
-                if (trial.clubName) document.getElementById('clubName').value = trial.clubName;
-                if (trial.location) document.getElementById('trialLocation').value = trial.location;
-                
-                showTab('setup', document.querySelector('.nav-tab'));
-                alert('Trial loaded for editing!');
-            }
-        }
-
-        function deleteTrial(trialId) {
-            if (confirm('Are you sure you want to delete this trial?')) {
-                var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
-                delete userTrials[trialId];
-                localStorage.setItem('trials_' + currentUser.username, JSON.stringify(userTrials));
-                
-                loadUserTrials();
-                alert('Trial deleted successfully!');
-            }
-        }
-
-        // Trial setup functions
-        function generateDays() {
-            var days = parseInt(document.getElementById('trialDays').value) || 1;
-            var container = document.getElementById('daysContainer');
-            
-            var html = '';
-            for (var i = 1; i <= days; i++) {
-                html += `
-                    <div class="day-container">
-                        <div class="day-header">Day ${i}</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="form-group">
-                                <label>Date:</label>
-                                <input type="date" id="day${i}_date">
-                            </div>
-                            <div class="form-group">
-                                <label>Classes:</label>
-                                <input type="text" id="day${i}_classes" placeholder="e.g., Novice A, Open B">
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            container.innerHTML = html;
-        }
-
-        function saveTrialUpdates() {
-            var trialName = document.getElementById('trialName').value;
-            if (!trialName) {
-                alert('Please enter a trial name');
-                return false;
-            }
-            
-            if (!currentTrialId) {
-                currentTrialId = 'trial_' + Date.now();
-            }
-            
-            var trialData = {
-                name: trialName,
-                clubName: document.getElementById('clubName').value,
-                location: document.getElementById('trialLocation').value,
-                config: trialConfig,
-                results: entryResults,
-                owner: currentUser.username,
-                created: new Date().toISOString(),
-                updated: new Date().toISOString()
-            };
-            
-            var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
-            userTrials[currentTrialId] = trialData;
-            localStorage.setItem('trials_' + currentUser.username, JSON.stringify(userTrials));
-            
-            alert('Trial configuration saved successfully!');
-            loadUserTrials();
-            return true;
-        }
-
-        function validateTrialConfiguration() {
-            alert('Trial configuration is valid!');
-        }
-
-        function exportTrialConfig() {
-            alert('Export functionality coming soon!');
-        }
-
-        function copyURL() {
-            alert('URL copy functionality coming soon!');
-        }
-
-        // Initialize the app
+        // Initialize when page loads
         window.addEventListener('load', function() {
+            initializeTestUsers();
             generateDays();
+            initializeTrialSetup();
             
-            // Create test user if none exists
-            var users = JSON.parse(localStorage.getItem('trialUsers') || '{}');
-            if (Object.keys(users).length === 0) {
-                users['admin'] = {
-                    username: 'admin',
-                    password: 'admin123',
-                    fullName: 'Admin User',
-                    email: 'admin@dogtrial.com',
-                    created: new Date().toISOString()
-                };
-                localStorage.setItem('trialUsers', JSON.stringify(users));
-                console.log('Test admin user created - Username: admin, Password: admin123');
-            }
+            console.log('✅ Dog Trial Management System loaded successfully!');
+            console.log('📝 Test login - Username: admin, Password: admin123');
         });
     </script>
 </body>
