@@ -290,27 +290,319 @@ function quickAccessJuneLeague() {
     }
 }
 
-// Validation functions
-function validateEmail(email) {
-    var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-}
+// Entry Management Functions - Delete and Clear Entries
 
-function validateForm(formId) {
-    var form = document.getElementById(formId);
-    if (!form) return false;
+// Function to show all entries with delete options
+function showAllEntriesWithManagement() {
+    if (entryResults.length === 0) {
+        alert('No entries to manage');
+        return;
+    }
     
-    var requiredFields = form.querySelectorAll('input[required]');
-    var isValid = true;
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
     
-    requiredFields.forEach(function(field) {
-        if (!field.value.trim()) {
-            field.style.borderColor = '#dc3545';
-            isValid = false;
-        } else {
-            field.style.borderColor = '#e0e0e0';
-        }
+    var html = `
+        <div style="background: white; border-radius: 15px; max-width: 1200px; width: 100%; max-height: 80vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📋 Manage Entries (${entryResults.length} total)</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Select entries to delete or clear all entries</p>
+            </div>
+            <div style="padding: 30px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 25px; justify-content: center;">
+                    <button onclick="selectAllEntries()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">✅ Select All</button>
+                    <button onclick="unselectAllEntries()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">❌ Unselect All</button>
+                    <button onclick="deleteSelectedEntries()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🗑️ Delete Selected</button>
+                    <button onclick="clearAllEntries()" style="background: #fd7e14; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🧹 Clear All Entries</button>
+                    <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">✅ Done</button>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllEntries(this.checked)" style="transform: scale(1.2);">
+                                </th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">#</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Dog Name</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Registration</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Handler</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Email</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Classes</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+    
+    entryResults.forEach(function(entry, index) {
+        var classes = Array.isArray(entry.trials) ? 
+            entry.trials.map(function(t) { 
+                return t.class + ' R' + t.round + (t.type === 'feo' ? ' (FEO)' : ''); 
+            }).join(', ') : 
+            (entry.trialClass || 'N/A');
+        
+        html += `
+            <tr style="border-bottom: 1px solid #eee; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}" id="entryRow${index}">
+                <td style="padding: 12px; text-align: center;">
+                    <input type="checkbox" class="entryCheckbox" data-index="${index}" style="transform: scale(1.2);">
+                </td>
+                <td style="padding: 12px; font-weight: bold;">${index + 1}</td>
+                <td style="padding: 12px; font-weight: bold; color: #2c5aa0;">${entry.callName}</td>
+                <td style="padding: 12px;">${entry.regNumber}</td>
+                <td style="padding: 12px;">${entry.handler}</td>
+                <td style="padding: 12px; font-size: 12px;">${entry.email || 'N/A'}</td>
+                <td style="padding: 12px; font-size: 11px; max-width: 200px;">${classes}</td>
+                <td style="padding: 12px;">
+                    <button onclick="deleteSingleEntry(${index})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Delete</button>
+                </td>
+            </tr>
+        `;
     });
     
-    return isValid;
+    html += '</tbody></table></div></div></div>';
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+}
+
+// Toggle all entries selection
+function toggleAllEntries(checked) {
+    var checkboxes = document.querySelectorAll('.entryCheckbox');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = checked;
+    });
+}
+
+// Select all entries
+function selectAllEntries() {
+    document.getElementById('selectAllCheckbox').checked = true;
+    toggleAllEntries(true);
+}
+
+// Unselect all entries
+function unselectAllEntries() {
+    document.getElementById('selectAllCheckbox').checked = false;
+    toggleAllEntries(false);
+}
+
+// Delete selected entries
+function deleteSelectedEntries() {
+    var selectedIndices = [];
+    var checkboxes = document.querySelectorAll('.entryCheckbox:checked');
+    
+    checkboxes.forEach(function(checkbox) {
+        selectedIndices.push(parseInt(checkbox.dataset.index));
+    });
+    
+    if (selectedIndices.length === 0) {
+        alert('No entries selected for deletion.');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to delete ' + selectedIndices.length + ' selected entries? This cannot be undone.')) {
+        // Sort indices in descending order so we delete from the end first
+        selectedIndices.sort(function(a, b) { return b - a; });
+        
+        selectedIndices.forEach(function(index) {
+            entryResults.splice(index, 1);
+        });
+        
+        // Save the updated entries
+        saveEntries();
+        
+        alert('✅ Deleted ' + selectedIndices.length + ' entries successfully!');
+        
+        // Close modal and refresh displays
+        document.querySelector('div[style*="position: fixed"]').remove();
+        updateAllDisplays();
+    }
+}
+
+// Delete a single entry
+function deleteSingleEntry(index) {
+    var entry = entryResults[index];
+    
+    if (confirm('Are you sure you want to delete this entry?\n\nDog: ' + entry.callName + ' (' + entry.regNumber + ')\nHandler: ' + entry.handler + '\n\nThis cannot be undone.')) {
+        entryResults.splice(index, 1);
+        saveEntries();
+        
+        alert('✅ Entry deleted successfully!');
+        
+        // Refresh the management modal
+        document.querySelector('div[style*="position: fixed"]').remove();
+        showAllEntriesWithManagement();
+        updateAllDisplays();
+    }
+}
+
+// Clear all entries from the trial
+function clearAllEntries() {
+    if (entryResults.length === 0) {
+        alert('No entries to clear.');
+        return;
+    }
+    
+    var trialName = currentTrialId ? (function() {
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[currentTrialId];
+        return trial ? trial.name : 'Current Trial';
+    })() : 'Current Trial';
+    
+    if (confirm('⚠️ WARNING: This will delete ALL ' + entryResults.length + ' entries from "' + trialName + '".\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
+        if (confirm('🚨 FINAL CONFIRMATION:\n\nYou are about to permanently delete ' + entryResults.length + ' entries.\n\nType "DELETE ALL" in the next dialog to confirm.')) {
+            var confirmation = prompt('Type "DELETE ALL" to confirm permanent deletion:');
+            
+            if (confirmation === 'DELETE ALL') {
+                entryResults = [];
+                saveEntries();
+                
+                alert('✅ All entries have been cleared from the trial.');
+                
+                // Close modal and refresh displays
+                document.querySelector('div[style*="position: fixed"]').remove();
+                updateAllDisplays();
+            } else {
+                alert('Deletion cancelled. Entries have NOT been deleted.');
+            }
+        }
+    }
+}
+
+// Update all displays after entry changes
+function updateAllDisplays() {
+    // Update entry form tab if it's showing current trial info
+    if (document.getElementById('selectedTrialEntryManagement')) {
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[currentTrialId];
+        if (trial) {
+            updateEntryContext(trial);
+        }
+    }
+    
+    // Update results tab if it's showing current trial info
+    if (document.getElementById('selectedTrialResults')) {
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[currentTrialId];
+        if (trial) {
+            updateResultsContext(trial);
+        }
+    }
+    
+    // Update My Trials tab
+    if (typeof loadUserTrials === 'function') {
+        loadUserTrials();
+    }
+}
+
+// Enhanced showAllEntries function with management option
+function showAllEntries() {
+    if (entryResults.length === 0) {
+        alert('No entries to display');
+        return;
+    }
+    
+    // Show choice modal
+    var choiceModal = document.createElement('div');
+    choiceModal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    choiceModal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 500px; width: 100%; padding: 40px; text-align: center;">
+            <h2 style="margin: 0 0 20px 0; color: #333;">📋 View Entries</h2>
+            <p style="color: #666; margin-bottom: 30px;">Choose how you want to view the entries:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button onclick="showEntriesReadOnly(); this.closest('div[style*=\"position: fixed\"]').remove();" style="background: linear-gradient(45deg, #17a2b8, #138496); color: white; border: none; padding: 15px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    👁️ View Only (Read Only)
+                </button>
+                <button onclick="showAllEntriesWithManagement(); this.closest('div[style*=\"position: fixed\"]').remove();" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none; padding: 15px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    🗑️ Manage Entries (Delete/Edit)
+                </button>
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(choiceModal);
+}
+
+// Read-only entries view
+function showEntriesReadOnly() {
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    var html = `
+        <div style="background: white; border-radius: 15px; max-width: 1000px; width: 100%; max-height: 80vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: #f8f9fa;">
+                <h2 style="margin: 0; color: #333;">📋 All Entries (${entryResults.length} total)</h2>
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="float: right; background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">✕ Close</button>
+            </div>
+            <div style="padding: 20px;">
+                ${generateDetailedEntriesTable(entryResults)}
+            </div>
+        </div>
+    `;
+    
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+}
+
+function generateDetailedEntriesTable(entries) {
+    var html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background: white;">
+                <thead>
+                    <tr style="background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">#</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Dog Name</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Registration</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Handler</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Email</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Classes Entered</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Entry Date</th>
+                        <th style="padding: 15px; text-align: left; border-bottom: 2px solid #ddd;">Confirmation</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    entries.forEach(function(entry, index) {
+        var classes = Array.isArray(entry.trials) ? 
+            entry.trials.map(function(t) { 
+                return t.class + ' R' + t.round + (t.type === 'feo' ? ' (FEO)' : ''); 
+            }).join(', ') : 
+            (entry.trialClass || 'N/A');
+        
+        var entryDate = entry.entryDate ? new Date(entry.entryDate).toLocaleDateString() : 'N/A';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #eee; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
+                <td style="padding: 12px; font-weight: bold;">${index + 1}</td>
+                <td style="padding: 12px; font-weight: bold; color: #2c5aa0;">${entry.callName}</td>
+                <td style="padding: 12px;">${entry.regNumber}</td>
+                <td style="padding: 12px;">${entry.handler}</td>
+                <td style="padding: 12px; font-size: 12px;">${entry.email || 'N/A'}</td>
+                <td style="padding: 12px; font-size: 11px; max-width: 200px; word-wrap: break-word;">${classes}</td>
+                <td style="padding: 12px;">${entryDate}</td>
+                <td style="padding: 12px; font-size: 11px;">${entry.confirmationNumber || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table></div>';
+    return html;
 }
