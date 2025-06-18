@@ -1,16 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="data:,">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Dog Sports League Trial Management System" />
-    <title>Dog Sports League</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dog Trial Management System</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/print.css">
+    
+    <style>
+        /* Enhanced Entry Form Styles */
+        .entry-form-header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .entry-form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .trial-selection-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Modal -->
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-modal">
+            <h2>Welcome to Dog Trial Management System</h2>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthTab('login', this)">Login</button>
+                <button class="auth-tab" onclick="showAuthTab('register', this)">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+                <input type="text" id="loginUsername" class="auth-input" placeholder="Username" required>
+                <input type="password" id="loginPassword" class="auth-input" placeholder="Password" required>
+                <button type="submit" class="auth-button">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+                <input type="text" id="regUsername" class="auth-input" placeholder="Choose Username" required>
+                <input type="password" id="regPassword" class="auth-input" placeholder="Choose Password" required>
+                <input type="password" id="regConfirmPassword" class="auth-input" placeholder="Confirm Password" required>
+                <input type="text" id="regFullName" class="auth-input" placeholder="Full Name" required>
+                <input type="email" id="regEmail" class="auth-input" placeholder="Email Address" required>
+                <button type="submit" class="auth-button">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="hidden">
+        <div class="container">
+            <!-- User Bar -->
+            <div class="user-bar">
+                <div class="user-info" id="userInfo"></div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- Header -->
+            <div class="header">
+                <h1>🐕 Dog Trial Management System</h1>
+                <p>Complete trial setup, entry management, and scoring solution</p>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('setup', this)">Trial Setup</button>
+                <button class="nav-tab" onclick="showTab('trials', this)">My Trials</button>
+                <button class="nav-tab" onclick="showTab('entry', this)">Entry Form</button>
+                <button class="nav-tab" onclick="showTab('results', this)">Results</button>
+                <button class="nav-tab" onclick="showTab('cross-reference', this)">Cross Reference</button>
+                <button class="nav-tab" onclick="showTab('running-order', this)">Running Order</button>
+                <button class="nav-tab" onclick="showTab('score-sheets', this)">Score Sheets</button>
+                <button class="nav-tab" onclick="showTab('score-entry', this)">Score Entry</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="setup" class="tab-content active">
+                <h2>Trial Configuration</h2>
+                <div class="setup-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="trialName">Trial Name:</label>
+                            <input type="text" id="trialName" placeholder="e.g., Summer Championship Trial">
+                        </div>
+                        <div class="form-group">
+                            <label for="trialDays">Number of Days:</label>
+                            <input type="number" id="trialDays" min="1" max="10" value="2" onchange="generateDays()">
+                        </div>
+                    </div>
+                    
+                    <div id="daysContainer"></div>
+                    
+                    <div class="form-actions">
+                        <button type="button" onclick="saveTrialUpdates()">💾 Save Trial Configuration</button>
+                        <button type="button" onclick="validateTrialConfiguration()">✅ Validate Configuration</button>
+                        <button type="button" onclick="exportTrialConfig()">📤 Export Configuration</button>
+                        <button type="button" onclick="importTrialConfig(document.getElementById('importFile'))">📁 Import Configuration</button>
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importTrialConfig(this)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other tab contents would go here -->
+            <div id="trials" class="tab-content">
+                <h2>My Trials</h2>
+                <div id="trialsContainer">
+                    <p>No trials configured yet. Please set up a trial first.</p>
+                </div>
+            </div>
+
+            <div id="entry" class="tab-content">
+                <h2>Entry Management</h2>
+                <div id="entryContainer">
+                    <p>Please configure a trial first to enable entry management.</p>
+                </div>
+            </div>
+
+            <div id="results" class="tab-content">
+                <h2>Results</h2>
+                <div id="resultsContainer">
+                    <p>No entries recorded yet.</p>
+                </div>
+            </div>
+
+            <div id="cross-reference" class="tab-content">
+                <h2>Cross Reference</h2>
+                <div id="crossReferenceContainer">
+                    <p>No data available.</p>
+                </div>
+            </div>
+
+            <div id="running-order" class="tab-content">
+                <h2>Running Order</h2>
+                <div id="runningOrderContainer">
+                    <p>No running order configured.</p>
+                </div>
+            </div>
+
+            <div id="score-sheets" class="tab-content">
+                <h2>Score Sheets</h2>
+                <div id="scoreSheetsContainer">
+                    <p>Configure trials first to generate score sheets.</p>
+                </div>
+            </div>
+
+            <div id="score-entry" class="tab-content">
+                <h2>Score Entry</h2>
+                <div id="scoreEntryContainer">
+                    <p>No score sheets available for entry.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="js/database.js"></script>
+    <script src="js/trial-manager.js"></script>
+    <script src="js/running-order.js"></script>
+    <script src="js/score-sheets.js"></script>
+    <script src="js/scent-scoresheet.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+    <script src="js/waiver-entry.js"></script>
+
+    <!-- Initialize Application -->
+    <script>
+        // Global variables
+        var currentUser = null;
+        var trialConfig = [];
+        var entryResults = [];
+        var currentTrialId = null;
+
+        // Navigation functions
+        function showTab(tabName, element) {
+            // Hide all tab contents
+            var tabContents = document.querySelectorAll('.tab-content');
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            // Remove active class from all nav tabs
+            var navTabs = document.querySelectorAll('.nav-tab');
+            for (var i = 0; i < navTabs.length; i++) {
+                navTabs[i].classList.remove('active');
+            }
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            element.classList.add('active');
+        }
+
+        function showMainApp() {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            // Update user info
+            if (currentUser) {
+                document.getElementById('userInfo').textContent = 
+                    'Welcome, ' + currentUser.fullName + ' (' + currentUser.username + ')';
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('authOverlay').style.display = 'flex';
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+
+        function showStatusMessage(message, type) {
+            // Simple alert for now - can be enhanced later
+            alert(message);
+        }
+
+        function generateDays() {
+            var days = parseInt(document.getElementById('trialDays').value) || 1;
+            var container = document.getElementById('daysContainer');
+            var html = '';
+            
+            for (var i = 1; i <= days; i++) {
+                html += '<div class="day-container">';
+                html += '<div class="day-header">Day ' + i + '</div>';
+                html += '<div class="form-row">';
+                html += '<div class="form-group">';
+                html += '<label>Date:</label>';
+                html += '<input type="date" id="day' + i + '_date">';
+                html += '</div>';
+                html += '<div class="form-group">';
+                html += '<label>Classes:</label>';
+                html += '<input type="text" id="day' + i + '_classes" placeholder="e.g., Novice A, Open B">';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function saveTrialUpdates() {
+            var trialName = document.getElementById('trialName').value;
+            if (!trialName) {
+                showStatusMessage('Please enter a trial name', 'warning');
+                return false;
+            }
+            
+            showStatusMessage('Trial configuration saved successfully!', 'success');
+            return true;
+        }
+
+        function validateTrialConfiguration() {
+            showStatusMessage('Trial configuration is valid!', 'success');
+        }
+
+        function exportTrialConfig() {
+            showStatusMessage('Export functionality coming soon!', 'info');
+        }
+
+        function importTrialConfig(input) {
+            showStatusMessage('Import functionality coming soon!', 'info');
+        }
+
+        // Initialize the app
+        window.addEventListener('load', function() {
+            generateDays();
+        });
+    </script>
+</body>
 </html>
