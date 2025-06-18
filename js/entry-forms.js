@@ -265,6 +265,31 @@ function loadJuneLeague() {
     return findTrialByName('june league');
 }
 
+// Enhanced entry form that works with any trial
+function showTrialEntryForm(trialId) {
+    if (trialId) {
+        currentTrialId = trialId;
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[trialId];
+        if (trial) {
+            trialConfig = trial.config || [];
+            entryResults = trial.results || [];
+        }
+    }
+    
+    showJuneLeagueEntryForm();
+}
+
+// Add quick access functions
+function quickAccessJuneLeague() {
+    var juneLeagueId = findTrialByName('june league');
+    if (juneLeagueId) {
+        showTrialEntryForm(juneLeagueId);
+    } else {
+        alert('June League trial not found. Please check the trial name.');
+    }
+}
+
 // Validation functions
 function validateEmail(email) {
     var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
