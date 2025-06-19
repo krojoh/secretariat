@@ -984,3 +984,328 @@ function saveTrialConfiguration() {
 }
 
 console.log('✅ Missing save functions added');
+// ===== SEARCHABLE DROPDOWNS =====
+function makeDropdownSearchable(selectElement) {
+    if (!selectElement || selectElement.dataset.searchable) return;
+    
+    console.log('🔍 Making dropdown searchable:', selectElement.id);
+    
+    // Mark as processed
+    selectElement.dataset.searchable = 'true';
+    
+    // Hide original select
+    selectElement.style.display = 'none';
+    
+    // Create container
+    var container = document.createElement('div');
+    container.style.cssText = 'position: relative; width: 100%;';
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    
+    // Create search input
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = selectElement.options[0] ? selectElement.options[0].text : 'Type to search...';
+    searchInput.style.cssText = `
+        width: 100%; 
+        padding: 10px 12px; 
+        border: 2px solid #ddd; 
+        border-radius: 8px; 
+        background: white; 
+        font-size: 14px;
+        box-sizing: border-box;
+    `;
+    
+    // Create dropdown list
+    var dropdownList = document.createElement('div');
+    dropdownList.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    `;
+    
+    container.appendChild(searchInput);
+    container.appendChild(dropdownList);
+    
+    // Store all options
+    var allOptions = Array.from(selectElement.options).slice(1); // Skip first "-- Select --" option
+    
+    // Function to populate dropdown list
+    function populateList(filteredOptions) {
+        dropdownList.innerHTML = '';
+        
+        if (filteredOptions.length === 0) {
+            var noResults = document.createElement('div');
+            noResults.textContent = 'No matches found';
+            noResults.style.cssText = 'padding: 10px; color: #666; font-style: italic; text-align: center;';
+            dropdownList.appendChild(noResults);
+        } else {
+            filteredOptions.forEach(function(option) {
+                var item = document.createElement('div');
+                item.textContent = option.text;
+                item.style.cssText = `
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f0f0f0;
+                    transition: background-color 0.2s;
+                `;
+                
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+                
+                item.addEventListener('click', function() {
+                    // Update original select
+                    selectElement.value = option.value;
+                    
+                    // Update search input
+                    searchInput.value = option.text;
+                    searchInput.style.borderColor = '#28a745';
+                    
+                    // Hide dropdown
+                    dropdownList.style.display = 'none';
+                    
+                    // Trigger change event
+                    var event = new Event('change', { bubbles: true });
+                    selectElement.dispatchEvent(event);
+                    
+                    console.log('✅ Selected:', option.text);
+                });
+                
+                dropdownList.appendChild(item);
+            });
+        }
+    }
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        var searchTerm = this.value.toLowerCase();
+        
+        if (searchTerm === '') {
+            dropdownList.style.display = 'none';
+            selectElement.value = '';
+            this.style.borderColor = '#ddd';
+            return;
+        }
+        
+        var filteredOptions = allOptions.filter(function(option) {
+            return option.text.toLowerCase().includes(searchTerm);
+        });
+        
+        populateList(filteredOptions);
+        dropdownList.style.display = 'block';
+        this.style.borderColor = '#2196f3';
+    });
+    
+    // Show all options when focused
+    searchInput.addEventListener('focus', function() {
+        if (this.value === '') {
+            populateList(allOptions);
+            dropdownList.style.display = 'block';
+        }
+        this.style.borderColor = '#2196f3';
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            dropdownList.style.display = 'none';
+            searchInput.style.borderColor = '#ddd';
+        }
+    });
+    
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+        var items = dropdownList.querySelectorAll('div');
+        var currentIndex = Array.from(items).findIndex(item => item.style.backgroundColor === 'rgb(227, 242, 253)');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            var nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+            if (items[nextIndex]) {
+                items.forEach(item => item.style.backgroundColor = '');
+                items[nextIndex].style.backgroundColor = '#e3f2fd';
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            var prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+            if (items[prevIndex]) {
+                items.forEach(item => item.style.backgroundColor = '');
+                items[prevIndex].style.backgroundColor = '#e3f2fd';
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            var highlighted = Array.from(items).find(item => item.style.backgroundColor === 'rgb(227, 242, 253)');
+            if (highlighted) {
+                highlighted.click();
+            }
+        } else if (e.key === 'Escape') {
+            dropdownList.style.display = 'none';
+            this.style.borderColor = '#ddd';
+        }
+    });
+    
+    console.log('✅ Searchable dropdown created for:', selectElement.id);
+}
+
+// Function to make all dropdowns searchable
+function makeAllDropdownsSearchable() {
+    console.log('🔍 Converting all dropdowns to searchable...');
+    
+    // Find all select elements
+    var selects = document.querySelectorAll('select');
+    var count = 0;
+    
+    selects.forEach(function(select) {
+        // Skip if already processed or has very few options
+        if (select.dataset.searchable || select.options.length < 5) return;
+        
+        makeDropdownSearchable(select);
+        count++;
+    });
+    
+    console.log('✅ Made ' + count + ' dropdowns searchable');
+}
+
+// Function to apply all UI improvements
+function applyUIImprovements() {
+    console.log('🎨 Applying all UI improvements...');
+    
+    // Improve tabs
+    improveTabs();
+    
+    // Make dropdowns searchable
+    makeAllDropdownsSearchable();
+    
+    // Set up automatic detection for new dropdowns
+    var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.addedNodes.length > 0) {
+                setTimeout(function() {
+                    makeAllDropdownsSearchable();
+                }, 200);
+            }
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    console.log('✅ UI improvements applied and monitoring for new elements');
+}
+
+// CSS for permanent tab improvements (add to css/main.css)
+function generateTabCSS() {
+    return `
+/* Enhanced Navigation Tabs - Add this to css/main.css */
+.nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #2c5aa0;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 5px;
+    border-radius: 10px 10px 0 0;
+}
+
+.nav-tab {
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #ffffff 0%, #f1f3f4 100%);
+    border: 2px solid #dee2e6;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    border-radius: 8px;
+    margin: 3px;
+    transition: all 0.3s ease;
+    color: #495057 !important;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-tab:hover {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: #2196f3;
+    color: #1976d2 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.nav-tab.active {
+    background: linear-gradient(135deg, #2c5aa0 0%, #1e3d72 100%);
+    color: white !important;
+    border-color: #1e3d72;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+    transform: translateY(-1px);
+}
+
+.nav-tab.active:hover {
+    background: linear-gradient(135deg, #1e3d72 0%, #2c5aa0 100%);
+    transform: translateY(-2px);
+}
+
+.nav-tab * {
+    color: inherit !important;
+}
+
+/* Searchable dropdown styling */
+.searchable-dropdown {
+    position: relative;
+}
+
+.searchable-dropdown input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.searchable-dropdown input:focus {
+    border-color: #2196f3;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+`;
+}
+
+// Auto-run improvements
+console.log('🚀 Loading UI improvements...');
+applyUIImprovements();
+
+// Make available globally
+window.applyUIImprovements = applyUIImprovements;
+window.makeAllDropdownsSearchable = makeAllDropdownsSearchable;
+window.improveTabs = improveTabs;
+
+console.log('✅ UI Improvements loaded!');
+console.log('💡 Commands available:');
+console.log('  - applyUIImprovements() : Apply all improvements');
+console.log('  - makeAllDropdownsSearchable() : Convert dropdowns');
+console.log('  - improveTabs() : Fix tab contrast');
+console.log('  - generateTabCSS() : Get CSS for permanent fix');
+
+// Instructions for permanent fix
+console.log('\n📝 For permanent fixes:');
+console.log('1. Add the CSS from generateTabCSS() to your css/main.css file');
+console.log('2. Add the JavaScript functions to your js files');
+console.log('3. Call applyUIImprovements() after login');
