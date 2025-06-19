@@ -339,7 +339,517 @@ function showAllEntriesWithManagement() {
                         </thead>
                         <tbody>
     `;
+    // Enhanced Entry Form with Auto-fill - Add to js/entry-forms.js or replace existing functions
+
+// Enhanced CSV parser to extract registration data for auto-fill
+function parseCSVForEntryData(csvText) {
+    csvData = [];
+    csvJudges = [];
+    csvClasses = [];
+    var registrationData = {}; // For auto-fill lookup
     
+    const lines = csvText.split('\n');
+    
+    lines.forEach(function(line, index) {
+        line = line.trim();
+        if (!line) return;
+        
+        try {
+            // Parse: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
+            const regNumber = line.substring(0, 10); // 07-0001-01
+            const restOfLine = line.substring(10); // BJShirley OttmerPatrol 1Linda Alberda
+            
+            // Extract dog name, handler, class, and judge
+            let dogName = '';
+            let handlerName = '';
+            let className = '';
+            let judgeName = '';
+            
+            // Method to parse the combined string
+            // Look for class patterns to split the string
+            const classPatterns = [
+                'Patrol', 'Detective', 'Investigator', 'Super Sleuth', 'Private Inv',
+                'Novice', 'Open', 'Excellent', 'Masters', 'FAST', 'Jumpers',
+                'Standard', 'Premier', 'Wildcard', 'Snooker', 'Gamblers'
+            ];
+            
+            let classFound = false;
+            
+            for (let pattern of classPatterns) {
+                const patternIndex = restOfLine.indexOf(pattern);
+                if (patternIndex !== -1) {
+                    // Split at the class pattern
+                    const beforeClass = restOfLine.substring(0, patternIndex); // BJShirley Ottmer
+                    const classAndAfter = restOfLine.substring(patternIndex); // Patrol 1Linda Alberda
+                    
+                    // Extract class (pattern + optional number)
+                    const classMatch = classAndAfter.match(/^([A-Za-z\s]+\d*)/);
+                    if (classMatch) {
+                        className = classMatch[1].trim();
+                    }
+                    
+                    // Everything after class is judge
+                    judgeName = classAndAfter.substring(className.length).trim();
+                    
+                    // Parse beforeClass to get dog name and handler
+                    // Look for capital letters to identify where handler name starts
+                    const capitalMatches = beforeClass.match(/[A-Z][a-z]+/g);
+                    
+                    if (capitalMatches && capitalMatches.length >= 2) {
+                        // First part is likely dog name, rest is handler
+                        dogName = capitalMatches[0];
+                        handlerName = capitalMatches.slice(1).join(' ');
+                    }
+                    
+                    classFound = true;
+                    break;
+                }
+            }
+            
+            // Alternative parsing if no class pattern found
+            if (!classFound) {
+                // Try to split by numbers or other patterns
+                const parts = restOfLine.split(/(?=[A-Z][a-z])/);
+                if (parts.length >= 3) {
+                    dogName = parts[0] || '';
+                    handlerName = parts[1] || '';
+                    judgeName = parts.slice(-1)[0] || '';
+                }
+            }
+            
+            // Clean up extracted data
+            dogName = dogName.trim();
+            handlerName = handlerName.trim();
+            className = className.trim();
+            judgeName = judgeName.trim();
+            
+            // Store for auto-fill lookup
+            if (regNumber && dogName && handlerName) {
+                registrationData[regNumber] = {
+                    dogName: dogName,
+                    handlerName: handlerName,
+                    className: className,
+                    judgeName: judgeName,
+                    fullLine: line
+                };
+            }
+            
+            // Store parsed data
+            csvData.push({
+                regNumber: regNumber,
+                dogName: dogName,
+                handlerName: handlerName,
+                className: className,
+                judgeName: judgeName,
+                line: line
+            });
+            
+            // Add to unique lists
+            if (className && !csvClasses.includes(className)) {
+                csvClasses.push(className);
+            }
+            
+            if (judgeName && !csvJudges.includes(judgeName)) {
+                csvJudges.push(judgeName);
+            }
+            
+        } catch (error) {
+            console.warn('Error parsing line ' + (index + 1) + ':', line, error);
+        }
+    });
+    
+    // Store registration data globally for auto-fill
+    window.registrationDatabase = registrationData;
+    
+    // Sort arrays
+    csvClasses.sort();
+    csvJudges.sort();
+    
+    console.log('✅ CSV parsed for entry auto-fill:', {
+        registrationRecords: Object.keys(registrationData).length,
+        sampleRegistrations: Object.keys(registrationData).slice(0, 5),
+        sampleData: registrationData[Object.keys(registrationData)[0]]
+    });
+}
+
+// Enhanced entry form with reordered fields and auto-fill
+function showEnhancedTrialEntryForm(trialId) {
+    if (trialId) {
+        currentTrialId = trialId;
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[trialId];
+        if (trial) {
+            trialConfig = trial.config || [];
+            entryResults = trial.results || [];
+        }
+    }
+    
+    if (!currentTrialId) {
+        alert('No trial selected! Please select a trial first.');
+        return;
+    }
+    
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var currentTrial = publicTrials[currentTrialId];
+    var trialConfig = currentTrial.config || [];
+    
+    if (trialConfig.length === 0) {
+        alert('Trial has no classes configured. Please set up the trial first.');
+        return;
+    }
+    
+    // Create entry form modal with reordered fields
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    // Build class selection HTML
+    var classesHTML = generateClassSelectionHTML(trialConfig);
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📝 Trial Entry Form</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Enter your dog for: ${currentTrial.name || 'Selected Trial'}</p>
+            </div>
+            
+            <form id="enhancedTrialEntryForm" style="padding: 30px;">
+                
+                <!-- 1. REGISTRATION NUMBER (Auto-fill trigger) -->
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #2196f3;">
+                    <h4 style="margin: 0 0 15px 0; color: #1976d2;">🆔 Registration Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Registration Number:</label>
+                        <input type="text" 
+                               id="dogRegNumber" 
+                               placeholder="e.g., 07-0001-01" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               onchange="autoFillDogInfo(this.value)"
+                               oninput="autoFillDogInfo(this.value)">
+                        <small style="color: #666; font-style: italic;">Enter registration number to auto-fill dog and handler information</small>
+                    </div>
+                </div>
+                
+                <!-- 2. DOG INFORMATION (Auto-filled) -->
+                <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #9c27b0;">
+                    <h4 style="margin: 0 0 15px 0; color: #7b1fa2;">🐕 Dog Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Call Name:</label>
+                        <input type="text" 
+                               id="dogCallName" 
+                               placeholder="Dog's call name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                        <small id="autoFillStatus" style="color: #28a745; font-style: italic; display: none;">✅ Auto-filled from registration database</small>
+                    </div>
+                </div>
+                
+                <!-- 3. HANDLER INFORMATION (Auto-filled) -->
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #4caf50;">
+                    <h4 style="margin: 0 0 15px 0; color: #388e3c;">👤 Handler Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Handler Name:</label>
+                        <input type="text" 
+                               id="handlerName" 
+                               placeholder="Handler's full name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Email Address:</label>
+                        <input type="email" 
+                               id="handlerEmail" 
+                               placeholder="handler@email.com" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                </div>
+                
+                <!-- 4. CLASS SELECTION -->
+                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #ff9800;">
+                    <h4 style="margin: 0 0 15px 0; color: #f57c00;">🏆 Class Selection</h4>
+                    <p style="color: #666; margin-bottom: 15px;">Select the classes you want to enter. You can select multiple classes across different days.</p>
+                    ${classesHTML}
+                </div>
+                
+                <!-- Submit Buttons -->
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                    <button type="submit" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">✅ Submit Entry</button>
+                    <button type="button" onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">❌ Cancel</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add enhanced form submission handler
+    setupEnhancedFormSubmission();
+    
+    console.log('✅ Enhanced entry form displayed with auto-fill capability');
+}
+
+// Auto-fill function triggered by registration number input
+function autoFillDogInfo(regNumber) {
+    if (!regNumber || regNumber.length < 8) {
+        // Clear auto-fill status
+        hideAutoFillStatus();
+        return;
+    }
+    
+    // Check if we have registration data loaded
+    if (!window.registrationDatabase) {
+        console.log('⚠️ Registration database not loaded yet');
+        return;
+    }
+    
+    // Look up the registration number
+    const dogData = window.registrationDatabase[regNumber];
+    
+    if (dogData) {
+        // Auto-fill the dog name and handler
+        const dogCallNameField = document.getElementById('dogCallName');
+        const handlerNameField = document.getElementById('handlerName');
+        
+        if (dogCallNameField && dogData.dogName) {
+            dogCallNameField.value = dogData.dogName;
+            dogCallNameField.style.background = '#e8f5e8'; // Green tint to show auto-filled
+        }
+        
+        if (handlerNameField && dogData.handlerName) {
+            handlerNameField.value = dogData.handlerName;
+            handlerNameField.style.background = '#e8f5e8'; // Green tint to show auto-filled
+        }
+        
+        // Show auto-fill status
+        showAutoFillStatus('✅ Auto-filled from registration: ' + dogData.dogName + ' / ' + dogData.handlerName);
+        
+        console.log('✅ Auto-filled registration ' + regNumber + ':', dogData);
+        
+    } else {
+        // Registration not found
+        hideAutoFillStatus();
+        
+        // Reset background colors
+        const dogCallNameField = document.getElementById('dogCallName');
+        const handlerNameField = document.getElementById('handlerName');
+        
+        if (dogCallNameField) dogCallNameField.style.background = 'white';
+        if (handlerNameField) handlerNameField.style.background = 'white';
+        
+        console.log('⚠️ Registration number not found:', regNumber);
+    }
+}
+
+// Show auto-fill status message
+function showAutoFillStatus(message) {
+    const statusElement = document.getElementById('autoFillStatus');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.style.display = 'block';
+    }
+}
+
+// Hide auto-fill status message
+function hideAutoFillStatus() {
+    const statusElement = document.getElementById('autoFillStatus');
+    if (statusElement) {
+        statusElement.style.display = 'none';
+    }
+}
+
+// Generate class selection HTML (unchanged from original)
+function generateClassSelectionHTML(trialConfig) {
+    var classesHTML = '';
+    var classesByDay = {};
+    
+    // Group classes by day
+    trialConfig.forEach(function(config) {
+        if (!classesByDay[config.day]) {
+            classesByDay[config.day] = [];
+        }
+        classesByDay[config.day].push(config);
+    });
+    
+    // Generate class selection interface
+    Object.keys(classesByDay).forEach(function(day) {
+        classesHTML += `
+            <div style="border: 2px solid #2c5aa0; margin: 15px 0; padding: 15px; border-radius: 8px; background: #f8f9fa;">
+                <h4 style="background: #2c5aa0; color: white; margin: -15px -15px 15px -15px; padding: 10px; border-radius: 6px 6px 0 0;">
+                    Day ${day} - ${classesByDay[day][0].date || 'TBD'}
+                </h4>
+        `;
+        
+        classesByDay[day].forEach(function(config, index) {
+            var classId = 'class_' + config.day + '_' + (config.classNum || index) + '_' + (config.round || 1);
+            var classLabel = config.className + ' - Round ' + (config.round || 1) + ' (Judge: ' + (config.judge || 'TBD') + ')';
+            var feoOption = config.feoOffered ? ' | FEO Available' : '';
+            
+            classesHTML += `
+                <div style="background: white; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #d0d0d0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" name="selectedClasses" value="${classId}" data-class="${config.className}" data-round="${config.round || 1}" data-judge="${config.judge}" data-day="${config.day}" style="margin-right: 10px; transform: scale(1.2);">
+                        <span style="font-weight: bold;">${classLabel}${feoOption}</span>
+                    </label>
+                    ${config.feoOffered ? `
+                        <div style="margin-left: 30px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; color: #666;">
+                                <input type="checkbox" name="feoClasses" value="${classId}_feo" data-class="${config.className}" data-round="${config.round || 1}" data-judge="${config.judge}" data-day="${config.day}" style="margin-right: 8px;">
+                                <span>Enter FEO only (For Exhibition Only)</span>
+                            </label>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        classesHTML += '</div>';
+    });
+    
+    return classesHTML;
+}
+
+// Enhanced form submission with clear and scroll to top
+function setupEnhancedFormSubmission() {
+    const form = document.getElementById('enhancedTrialEntryForm');
+    if (!form) return;
+    
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const regNumber = document.getElementById('dogRegNumber').value.trim();
+        const callName = document.getElementById('dogCallName').value.trim();
+        const handler = document.getElementById('handlerName').value.trim();
+        const email = document.getElementById('handlerEmail').value.trim();
+        
+        // Validate required fields
+        if (!regNumber || !callName || !handler || !email) {
+            alert('❌ Please fill in all required fields.');
+            return false;
+        }
+        
+        // Get selected classes
+        var selectedClasses = [];
+        var feoClasses = [];
+        
+        document.querySelectorAll('input[name="selectedClasses"]:checked').forEach(function(checkbox) {
+            selectedClasses.push({
+                class: checkbox.dataset.class,
+                round: checkbox.dataset.round,
+                judge: checkbox.dataset.judge,
+                day: checkbox.dataset.day,
+                type: 'regular'
+            });
+        });
+        
+        document.querySelectorAll('input[name="feoClasses"]:checked').forEach(function(checkbox) {
+            feoClasses.push({
+                class: checkbox.dataset.class,
+                round: checkbox.dataset.round,
+                judge: checkbox.dataset.judge,
+                day: checkbox.dataset.day,
+                type: 'feo'
+            });
+        });
+        
+        var allSelectedClasses = selectedClasses.concat(feoClasses);
+        
+        if (allSelectedClasses.length === 0) {
+            alert('❌ Please select at least one class to enter.');
+            return false;
+        }
+        
+        // Create entry object
+        var newEntry = {
+            regNumber: regNumber,
+            callName: callName,
+            handler: handler,
+            email: email,
+            trials: allSelectedClasses,
+            entryDate: new Date().toISOString(),
+            confirmationNumber: 'TR' + Date.now(),
+            trialId: currentTrialId,
+            trialName: currentTrial.name
+        };
+        
+        // Add to entries
+        entryResults.push(newEntry);
+        
+        // Save to storage
+        saveEntries();
+        
+        // Show confirmation
+        var classListText = allSelectedClasses.map(function(c) {
+            return c.class + ' Round ' + c.round + ' (' + c.type.toUpperCase() + ')';
+        }).join('\n  ');
+        
+        alert('✅ Entry submitted successfully!\n\nRegistration: ' + regNumber + '\nHandler: ' + handler + '\nDog: ' + callName + '\nClasses entered:\n  ' + classListText + '\n\nConfirmation Number: ' + newEntry.confirmationNumber);
+        
+        // Clear form
+        form.reset();
+        
+        // Remove auto-fill styling
+        document.getElementById('dogCallName').style.background = 'white';
+        document.getElementById('handlerName').style.background = 'white';
+        hideAutoFillStatus();
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Close modal after delay
+        setTimeout(function() {
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) modal.remove();
+        }, 2000);
+        
+        // Update displays
+        updateAllDisplays();
+        
+        console.log('✅ Enhanced entry submitted:', newEntry);
+        
+        return false;
+    };
+}
+
+// Enhanced CSV loading with entry data parsing
+async function loadCSVDataForEntries() {
+    try {
+        console.log('🔄 Loading CSV data for entry auto-fill...');
+        
+        const response = await fetch('data/dogs.csv');
+        if (!response.ok) {
+            throw new Error('CSV file not found at data/dogs.csv');
+        }
+        
+        const csvText = await response.text();
+        console.log('✅ CSV loaded for entry auto-fill');
+        
+        // Parse CSV for both dropdowns and entry auto-fill
+        parseCSVForEntryData(csvText);
+        
+        // Update dropdowns
+        updateAllDropdownsWithCSVData();
+        
+    } catch (error) {
+        console.warn('❌ Could not load CSV for entries:', error.message);
+        useDefaultDropdownData();
+    }
+}
+
+// Replacement function calls
+function showJuneLeagueEntryForm() {
+    showEnhancedTrialEntryForm(currentTrialId);
+}
+
+function showTrialEntryForm(trialId) {
+    showEnhancedTrialEntryForm(trialId);
+}
+
+console.log('✅ Enhanced entry form with auto-fill and reordered fields loaded');
     entryResults.forEach(function(entry, index) {
         var classes = Array.isArray(entry.trials) ? 
             entry.trials.map(function(t) { 
