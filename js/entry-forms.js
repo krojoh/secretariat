@@ -362,7 +362,7 @@ function parseCSVForEntryData(csvText) {
             // Extract dog name, handler, class, and judge
             let dogName = '';
             let handlerName = '';
-            let className = '';
+            let className = "";
             let judgeName = '';
             
             // Method to parse the combined string
