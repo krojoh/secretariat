@@ -215,7 +215,7 @@ function generateRoundsForClass(dayNum, classNum) {
 
 // ===== DROPDOWN POPULATION - FIXED VERSIONS =====
 
-// Populate a single class dropdown - FIXED VERSION
+// Populate a single class dropdown - FINAL WORKING VERSION
 function populateClassDropdown(selectElement) {
     if (!selectElement) return;
     
@@ -232,11 +232,17 @@ function populateClassDropdown(selectElement) {
     
     // Use global CSV data if available
     var classes = [];
-    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
+    if (typeof csvClasses !== 'undefined' && csvClasses && csvClasses.length > 0) {
         classes = csvClasses;
+        console.log('📚 Using loaded CSV classes:', classes.length);
     } else {
         // Fallback classes
-        classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+        classes = [
+            "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
+            "Novice A", "Novice B", "Open A", "Open B", "Utility A", "Utility B",
+            "Excellent A", "Excellent B", "Masters A", "Masters B"
+        ];
+        console.log('📚 Using fallback classes:', classes.length);
     }
     
     // Add each class option
@@ -251,12 +257,12 @@ function populateClassDropdown(selectElement) {
     });
     
     // Visual indicator
-    selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
+    selectElement.style.borderColor = classes.length > 20 ? '#28a745' : classes.length > 10 ? '#ffc107' : '#dc3545';
     
     console.log('✅ Populated class dropdown:', selectElement.id, 'with', classes.length, 'classes');
 }
 
-// Populate a single judge dropdown - FIXED VERSION
+// Populate a single judge dropdown - FINAL WORKING VERSION
 function populateJudgeDropdown(selectElement) {
     if (!selectElement) return;
     
@@ -273,11 +279,17 @@ function populateJudgeDropdown(selectElement) {
     
     // Use global CSV data if available
     var judges = [];
-    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
+    if (typeof csvJudges !== 'undefined' && csvJudges && csvJudges.length > 0) {
         judges = csvJudges;
+        console.log('👨‍⚖️ Using loaded CSV judges:', judges.length);
     } else {
         // Fallback judges
-        judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+        judges = [
+            "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames",
+            "Sharon Anderson", "Terry Arnold", "Susan Ashworth", "Pat Baker", "Mary Bax",
+            "Chris Bell", "Janet Berry", "John Bishop", "Carol Brown", "David Clark"
+        ];
+        console.log('👨‍⚖️ Using fallback judges:', judges.length);
     }
     
     // Add each judge option
@@ -292,13 +304,27 @@ function populateJudgeDropdown(selectElement) {
     });
     
     // Visual indicator
-    selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
+    selectElement.style.borderColor = judges.length > 50 ? '#28a745' : judges.length > 10 ? '#ffc107' : '#dc3545';
     
     console.log('✅ Populated judge dropdown:', selectElement.id, 'with', judges.length, 'judges');
 }
 
-// Populate all dropdowns with CSV data
-function populateAllDropdowns() {
+
+                console.log('✅ CSV data loaded, re-running dropdown population');
+                setTimeout(populateAllDropdowns, 500);
+            }).catch(function(error) {
+                console.log('❌ CSV loading failed:', error);
+                console.log('📚 Using fallback data for dropdowns');
+                populateDropdownsWithFallback();
+            });
+            return;
+        } else {
+            console.log('❌ loadCSVData function not available, using fallback');
+            populateDropdownsWithFallback();
+            return;
+        }
+    }
+    
     // Populate class dropdowns
     document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
         populateClassDropdown(select);
@@ -309,7 +335,52 @@ function populateAllDropdowns() {
         populateJudgeDropdown(select);
     });
     
-    console.log('✅ All dropdowns populated');
+    console.log('✅ All dropdowns populated with CSV data');
+}
+
+// Fallback function when CSV loading fails
+function populateDropdownsWithFallback() {
+    console.log('📚 Populating dropdowns with fallback data');
+    
+    // Populate class dropdowns
+    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
+        populateClassDropdown(select);
+    });
+    
+    // Populate judge dropdowns
+    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
+        populateJudgeDropdown(select);
+    });
+    
+    console.log('✅ All dropdowns populated with fallback data');
+}
+
+// Force CSV data reload and repopulate dropdowns
+function forceReloadCSVAndPopulate() {
+    console.log('🔄 Force reloading CSV data...');
+    
+    // Clear existing CSV data
+    if (typeof csvClasses !== 'undefined') csvClasses = [];
+    if (typeof csvJudges !== 'undefined') csvJudges = [];
+    
+    // Try to reload CSV data
+    if (typeof loadCSVData === 'function') {
+        loadCSVData().then(function() {
+            console.log('✅ CSV data force reloaded');
+            console.log('📚 Classes found:', typeof csvClasses !== 'undefined' ? csvClasses.length : 0);
+            console.log('👨‍⚖️ Judges found:', typeof csvJudges !== 'undefined' ? csvJudges.length : 0);
+            
+            setTimeout(function() {
+                populateAllDropdowns();
+            }, 500);
+        }).catch(function(error) {
+            console.log('❌ Force reload failed:', error);
+            populateDropdownsWithFallback();
+        });
+    } else {
+        console.log('❌ loadCSVData function not available');
+        populateDropdownsWithFallback();
+    }
 }
 
 // ===== CONFIGURATION COLLECTION =====
