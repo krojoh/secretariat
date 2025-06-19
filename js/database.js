@@ -271,8 +271,7 @@ function parseCSVData(csvText) {
     });
     
     // Sort classes and judges alphabetically for better UX
-    csvClasses.sort();
-    csvJudges.sort();
+   
     
     console.log('✅ CSV Parsing Complete:');
     console.log('📊 Total lines processed:', lines.length);
