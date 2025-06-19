@@ -180,7 +180,7 @@ async function loadCSVData() {
     }
 }
 
-// OPTIMIZED CSV PARSER
+// REPLACE the parseCSVData function starting at line 158 in js/database.js
 function parseCSVData(csvText) {
     csvJudges = [];
     csvClasses = [];
@@ -199,12 +199,14 @@ function parseCSVData(csvText) {
         if (!line) return;
         
         try {
+            // Skip header line
             if (line.toLowerCase().includes('registration') && line.toLowerCase().includes('call name')) {
                 console.log('📋 Skipping header line');
                 skippedLines++;
                 return;
             }
             
+            // Parse CSV format: Registration,Call Name,Handler,Class,Judges
             const parts = line.split(',').map(part => part.trim());
             
             if (parts.length >= 5) {
@@ -214,16 +216,20 @@ function parseCSVData(csvText) {
                 const className = parts[3];
                 const judgeName = parts[4];
                 
-                if (registration && registration.match(/^\d{2}-\d{4}-\d{2}/)) {
+                // More flexible registration validation
+                if (registration && (registration.match(/^\d{2}-\d{4}-\d{2}/) || registration.length >= 8)) {
                     
+                    // Process class name - preserve ALL unique classes
                     if (className && className.length > 0) {
                         const cleanClassName = className.replace(/\s+/g, ' ').trim();
                         if (cleanClassName && !classSet.has(cleanClassName)) {
                             classSet.add(cleanClassName);
                             csvClasses.push(cleanClassName);
+                            console.log('📚 Added class:', cleanClassName);
                         }
                     }
                     
+                    // Process judge name - preserve ALL unique judges
                     if (judgeName && judgeName.length > 1) {
                         let cleanJudgeName = judgeName
                             .replace(/\s+/g, ' ')
@@ -231,17 +237,17 @@ function parseCSVData(csvText) {
                             .replace(/[""'']/g, '')
                             .replace(/\.$/, '');
                         
-                        if (cleanJudgeName.length > 2 && 
-                            cleanJudgeName.match(/[A-Za-z]/) && 
-                            !cleanJudgeName.match(/^[\d\s]*$/)) {
-                            
+                        // More lenient judge validation
+                        if (cleanJudgeName.length > 2 && cleanJudgeName.match(/[A-Za-z]/)) {
                             if (!judgeSet.has(cleanJudgeName)) {
                                 judgeSet.add(cleanJudgeName);
                                 csvJudges.push(cleanJudgeName);
+                                console.log('👨‍⚖️ Added judge:', cleanJudgeName);
                             }
                         }
                     }
                     
+                    // Store complete record for auto-fill
                     csvData.push({
                         registration: registration,
                         callName: callName,
@@ -254,21 +260,32 @@ function parseCSVData(csvText) {
                     successfulParses++;
                 }
             } else {
+                console.log('⚠️ Skipping line ' + (index + 1) + ' - insufficient parts:', parts.length);
                 skippedLines++;
             }
             
         } catch (error) {
+            console.log('❌ Error parsing line ' + (index + 1) + ':', error.message);
             skippedLines++;
         }
     });
     
+    // Sort classes and judges alphabetically for better UX
+    csvClasses.sort();
+    csvJudges.sort();
+    
     console.log('✅ CSV Parsing Complete:');
     console.log('📊 Total lines processed:', lines.length);
     console.log('✅ Successfully parsed:', successfulParses);
-    console.log('📚 Unique classes found:', csvClasses.length);
-    console.log('👨‍⚖️ Unique judges found:', csvJudges.length);
+    console.log('⏭️ Skipped lines:', skippedLines);
+    console.log('📚 Total unique classes found:', csvClasses.length);
+    console.log('👨‍⚖️ Total unique judges found:', csvJudges.length);
     
-    // Store for auto-fill
+    // Show first few classes and judges for verification
+    console.log('📚 All classes found:', csvClasses);
+    console.log('👨‍⚖️ First 10 judges:', csvJudges.slice(0, 10));
+    
+    // Store registration data for auto-fill
     window.registrationDatabase = {};
     csvData.forEach(function(record) {
         if (record.registration) {
@@ -280,6 +297,8 @@ function parseCSVData(csvText) {
             };
         }
     });
+    
+    console.log('📝 Registration database created with', Object.keys(window.registrationDatabase).length, 'records');
 }
 
 function useDefaultData() {
