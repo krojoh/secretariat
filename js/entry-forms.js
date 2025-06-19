@@ -1735,3 +1735,314 @@ console.log('  - cancelEntryForm() : Manual cancel');
 
 // Auto-fix any existing problematic buttons
 setTimeout(fixCancelButtonsNow, 1000);
+// ADD this to the END of js/entry-forms.js
+
+// ===== ENHANCED ENTRY FORM WITH AUTO-FILL =====
+
+// Enhanced entry form with registration auto-fill
+function showEnhancedTrialEntryForm(trialId) {
+    if (trialId) {
+        currentTrialId = trialId;
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[trialId];
+        if (trial) {
+            trialConfig = trial.config || [];
+            entryResults = trial.results || [];
+        }
+    }
+    
+    if (!currentTrialId) {
+        alert('No trial selected! Please select a trial first.');
+        return;
+    }
+    
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var currentTrial = publicTrials[currentTrialId];
+    var trialConfig = currentTrial.config || [];
+    
+    if (trialConfig.length === 0) {
+        alert('Trial has no classes configured. Please set up the trial first.');
+        return;
+    }
+    
+    // Create entry form modal with auto-fill
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    // Build class selection HTML
+    var classesHTML = generateClassSelectionHTML(trialConfig);
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📝 Trial Entry Form</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Enter your dog for: ${currentTrial.name || 'Selected Trial'}</p>
+            </div>
+            
+            <form id="enhancedTrialEntryForm" style="padding: 30px;">
+                
+                <!-- 1. REGISTRATION NUMBER (Auto-fill trigger) -->
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #2196f3;">
+                    <h4 style="margin: 0 0 15px 0; color: #1976d2;">🆔 Registration Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Registration Number:</label>
+                        <input type="text" 
+                               id="dogRegNumber" 
+                               placeholder="e.g., 07-0001-01" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               onchange="autoFillDogInfo(this.value)"
+                               oninput="autoFillDogInfo(this.value)">
+                        <small style="color: #666; font-style: italic;">Enter registration number to auto-fill dog and handler information</small>
+                    </div>
+                </div>
+                
+                <!-- 2. DOG INFORMATION (Auto-filled) -->
+                <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #9c27b0;">
+                    <h4 style="margin: 0 0 15px 0; color: #7b1fa2;">🐕 Dog Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Call Name:</label>
+                        <input type="text" 
+                               id="dogCallName" 
+                               placeholder="Dog's call name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                        <small id="autoFillStatus" style="color: #28a745; font-style: italic; display: none;">✅ Auto-filled from registration database</small>
+                    </div>
+                </div>
+                
+                <!-- 3. HANDLER INFORMATION (Auto-filled) -->
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #4caf50;">
+                    <h4 style="margin: 0 0 15px 0; color: #388e3c;">👤 Handler Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Handler Name:</label>
+                        <input type="text" 
+                               id="handlerName" 
+                               placeholder="Handler's full name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Email Address:</label>
+                        <input type="email" 
+                               id="handlerEmail" 
+                               placeholder="handler@email.com" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                </div>
+                
+                <!-- 4. CLASS SELECTION -->
+                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #ff9800;">
+                    <h4 style="margin: 0 0 15px 0; color: #f57c00;">🏆 Class Selection</h4>
+                    <p style="color: #666; margin-bottom: 15px;">Select the classes you want to enter. You can select multiple classes across different days.</p>
+                    ${classesHTML}
+                </div>
+                
+                <!-- Submit Buttons -->
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                    <button type="submit" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">✅ Submit Entry</button>
+                    <button type="button" onclick="cancelEntryForm()" style="background: linear-gradient(45deg, #6c757d, #5a6268); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">🏠 Return to Dashboard</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add enhanced form submission handler
+    setupEnhancedFormSubmission();
+    
+    console.log('✅ Enhanced entry form displayed with auto-fill capability');
+}
+
+// Auto-fill function triggered by registration number input
+function autoFillDogInfo(regNumber) {
+    if (!regNumber || regNumber.length < 8) {
+        hideAutoFillStatus();
+        return;
+    }
+    
+    // Check if we have registration data loaded
+    if (!window.registrationDatabase) {
+        console.log('⚠️ Registration database not loaded yet');
+        return;
+    }
+    
+    // Look up the registration number
+    const dogData = window.registrationDatabase[regNumber];
+    
+    if (dogData) {
+        // Auto-fill the dog name and handler
+        const dogCallNameField = document.getElementById('dogCallName');
+        const handlerNameField = document.getElementById('handlerName');
+        
+        if (dogCallNameField && dogData.dogName) {
+            dogCallNameField.value = dogData.dogName;
+            dogCallNameField.style.background = '#e8f5e8';
+        }
+        
+        if (handlerNameField && dogData.handlerName) {
+            handlerNameField.value = dogData.handlerName;
+            handlerNameField.style.background = '#e8f5e8';
+        }
+        
+        showAutoFillStatus('✅ Auto-filled from registration: ' + dogData.dogName + ' / ' + dogData.handlerName);
+        console.log('✅ Auto-filled registration ' + regNumber + ':', dogData);
+        
+    } else {
+        hideAutoFillStatus();
+        
+        const dogCallNameField = document.getElementById('dogCallName');
+        const handlerNameField = document.getElementById('handlerName');
+        
+        if (dogCallNameField) dogCallNameField.style.background = 'white';
+        if (handlerNameField) handlerNameField.style.background = 'white';
+        
+        console.log('⚠️ Registration number not found:', regNumber);
+    }
+}
+
+// Show auto-fill status message
+function showAutoFillStatus(message) {
+    const statusElement = document.getElementById('autoFillStatus');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.style.display = 'block';
+    }
+}
+
+// Hide auto-fill status message
+function hideAutoFillStatus() {
+    const statusElement = document.getElementById('autoFillStatus');
+    if (statusElement) {
+        statusElement.style.display = 'none';
+    }
+}
+
+// Enhanced form submission
+function setupEnhancedFormSubmission() {
+    const form = document.getElementById('enhancedTrialEntryForm');
+    if (!form) return;
+    
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const regNumber = document.getElementById('dogRegNumber').value.trim();
+        const callName = document.getElementById('dogCallName').value.trim();
+        const handler = document.getElementById('handlerName').value.trim();
+        const email = document.getElementById('handlerEmail').value.trim();
+        
+        // Validate required fields
+        if (!regNumber || !callName || !handler || !email) {
+            alert('❌ Please fill in all required fields.');
+            return false;
+        }
+        
+        // Get selected classes
+        var selectedClasses = [];
+        var feoClasses = [];
+        
+        document.querySelectorAll('input[name="selectedClasses"]:checked').forEach(function(checkbox) {
+            selectedClasses.push({
+                class: checkbox.dataset.class,
+                round: checkbox.dataset.round,
+                judge: checkbox.dataset.judge,
+                day: checkbox.dataset.day,
+                type: 'regular'
+            });
+        });
+        
+        document.querySelectorAll('input[name="feoClasses"]:checked').forEach(function(checkbox) {
+            feoClasses.push({
+                class: checkbox.dataset.class,
+                round: checkbox.dataset.round,
+                judge: checkbox.dataset.judge,
+                day: checkbox.dataset.day,
+                type: 'feo'
+            });
+        });
+        
+        var allSelectedClasses = selectedClasses.concat(feoClasses);
+        
+        if (allSelectedClasses.length === 0) {
+            alert('❌ Please select at least one class to enter.');
+            return false;
+        }
+        
+        // Create entry object
+        var newEntry = {
+            regNumber: regNumber,
+            callName: callName,
+            handler: handler,
+            email: email,
+            trials: allSelectedClasses,
+            entryDate: new Date().toISOString(),
+            confirmationNumber: 'TR' + Date.now(),
+            trialId: currentTrialId,
+            trialName: currentTrial.name
+        };
+        
+        // Add to entries
+        entryResults.push(newEntry);
+        
+        // Save to storage
+        saveEntries();
+        
+        // Show confirmation
+        var classListText = allSelectedClasses.map(function(c) {
+            return c.class + ' Round ' + c.round + ' (' + c.type.toUpperCase() + ')';
+        }).join('\n  ');
+        
+        alert('✅ Entry submitted successfully!\n\nRegistration: ' + regNumber + '\nHandler: ' + handler + '\nDog: ' + callName + '\nClasses entered:\n  ' + classListText + '\n\nConfirmation Number: ' + newEntry.confirmationNumber);
+        
+        // Clear form
+        form.reset();
+        document.getElementById('dogCallName').style.background = 'white';
+        document.getElementById('handlerName').style.background = 'white';
+        hideAutoFillStatus();
+        
+        // Close modal
+        var modal = document.querySelector('div[style*="position: fixed"]');
+        if (modal) modal.remove();
+        
+        // Update displays
+        if (typeof updateAllDisplays === 'function') updateAllDisplays();
+        
+        console.log('✅ Enhanced entry submitted:', newEntry);
+        return false;
+    };
+}
+
+// Enhanced cancel function
+function cancelEntryForm() {
+    var modals = document.querySelectorAll('div[style*="position: fixed"]');
+    modals.forEach(function(modal) {
+        modal.remove();
+    });
+    
+    // Return to trials tab
+    if (typeof showTab === 'function') {
+        var trialsTab = document.querySelector('.nav-tab[onclick*="trials"]');
+        if (trialsTab) {
+            showTab('trials', trialsTab);
+        }
+    }
+    
+    console.log('✅ Entry form cancelled');
+}
+
+// Override existing entry form functions to use enhanced version
+function showJuneLeagueEntryForm() {
+    showEnhancedTrialEntryForm(currentTrialId);
+}
+
+function showTrialEntryForm(trialId) {
+    showEnhancedTrialEntryForm(trialId);
+}
+
+console.log('✅ Enhanced entry form functions loaded permanently');
