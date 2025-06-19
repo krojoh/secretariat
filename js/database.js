@@ -842,7 +842,151 @@ if (document.readyState === 'loading') {
 } else {
     initializeEnhancedSystem();
 }
+// Function to populate edit mode selections - ADD this to js/database.js
+function populateEditModeSelections(config) {
+    config.forEach(function(classConfig) {
+        var day = classConfig.day;
+        var classNum = classConfig.classNum;
+        
+        // Populate date field
+        if (classConfig.date) {
+            var dateField = document.getElementById('day' + day + '_date');
+            if (dateField) dateField.value = classConfig.date;
+        }
+        
+        // Populate class name dropdown
+        if (classConfig.className) {
+            var classField = document.getElementById('day' + day + '_class' + classNum + '_name');
+            if (classField) {
+                classField.value = classConfig.className;
+                console.log('✅ Restored class name:', classConfig.className);
+            }
+        }
+        
+        // Populate rounds dropdown
+        if (classConfig.round || classConfig.rounds) {
+            var roundsField = document.getElementById('day' + day + '_class' + classNum + '_round');
+            if (roundsField) {
+                roundsField.value = classConfig.round || classConfig.rounds || 1;
+                console.log('✅ Restored rounds:', classConfig.round || classConfig.rounds);
+            }
+        }
+        
+        // Populate judge dropdown
+        if (classConfig.judge) {
+            var judgeField = document.getElementById('day' + day + '_class' + classNum + '_judge');
+            if (judgeField) {
+                judgeField.value = classConfig.judge;
+                console.log('✅ Restored judge:', classConfig.judge);
+            }
+        }
+        
+        // Set FEO checkbox
+        if (classConfig.feoOffered) {
+            var feoField = document.getElementById('day' + day + '_class' + classNum + '_feo');
+            if (feoField) {
+                feoField.checked = classConfig.feoOffered;
+                console.log('✅ Restored FEO option:', classConfig.feoOffered);
+            }
+        }
+    });
+    
+    console.log('✅ All original selections restored in edit mode');
+}
 
+// Enhanced saveTrialConfiguration function - REPLACE the existing one in js/trial-setup.js or add to js/database.js
+function saveTrialConfiguration() {
+    var trialName = document.getElementById('trialName').value.trim();
+    var clubName = document.getElementById('clubName').value.trim();
+    var location = document.getElementById('trialLocation').value.trim();
+    var days = parseInt(document.getElementById('trialDays').value) || 1;
+    
+    if (!trialName) {
+        alert('❌ Please enter a trial name.');
+        return;
+    }
+    
+    if (!currentUser) {
+        alert('❌ Please log in to save trials.');
+        return;
+    }
+    
+    // Collect all class configurations with correct field names
+    var config = [];
+    
+    for (var day = 1; day <= days; day++) {
+        var dayDateField = document.getElementById('day' + day + '_date');
+        var dayDate = dayDateField ? dayDateField.value : '';
+        
+        var numClassesField = document.getElementById('day' + day + '_numClasses');
+        var classCount = numClassesField ? parseInt(numClassesField.value) || 2 : 2;
+        
+        for (var classNum = 1; classNum <= classCount; classNum++) {
+            var classNameField = document.getElementById('day' + day + '_class' + classNum + '_name');
+            var judgeField = document.getElementById('day' + day + '_class' + classNum + '_judge');
+            var roundField = document.getElementById('day' + day + '_class' + classNum + '_round');
+            var feoField = document.getElementById('day' + day + '_class' + classNum + '_feo');
+            
+            var className = classNameField ? classNameField.value : '';
+            var judge = judgeField ? judgeField.value : '';
+            var round = roundField ? parseInt(roundField.value) || 1 : 1;
+            var feoOffered = feoField ? feoField.checked : false;
+            
+            // Only save if at least class name or judge is specified
+            if (className || judge) {
+                config.push({
+                    day: day,
+                    date: dayDate,
+                    classNum: classNum,
+                    className: className,
+                    round: round,
+                    rounds: round,
+                    judge: judge,
+                    feoOffered: feoOffered
+                });
+            }
+        }
+    }
+    
+    // Save trial data
+    if (!currentTrialId) {
+        currentTrialId = 'trial_' + Date.now();
+    }
+    
+    var trialData = {
+        name: trialName,
+        clubName: clubName,
+        location: location,
+        days: days,
+        config: config,
+        results: entryResults || [],
+        owner: currentUser.username,
+        created: new Date().toISOString(),
+        updated: new Date().toISOString()
+    };
+    
+    // Update global variables
+    trialConfig = config;
+    currentTrial = trialData;
+    
+    // Save to localStorage
+    var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
+    userTrials[currentTrialId] = trialData;
+    localStorage.setItem('trials_' + currentUser.username, JSON.stringify(userTrials));
+    
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    publicTrials[currentTrialId] = trialData;
+    localStorage.setItem('publicTrials', JSON.stringify(publicTrials));
+    
+    alert('✅ Trial "' + trialName + '" saved successfully!\n\nConfiguration:\n- ' + config.length + ' classes configured\n- ' + days + ' days\n- Ready for entries');
+    
+    // Update trials display
+    if (typeof loadUserTrials === 'function') {
+        loadUserTrials();
+    }
+    
+    console.log('✅ Trial configuration saved with correct field order');
+}
 function initializeEnhancedSystem() {
     console.log('🚀 Enhanced Trial Management System Initialized');
     console.log('✅ Demo accounts: admin/admin and user/user');
