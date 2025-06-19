@@ -964,7 +964,393 @@ function saveTrialConfiguration() {
         created: new Date().toISOString(),
         updated: new Date().toISOString()
     };
+    // CSV Data Loader for Judges and Classes - Add to js/database.js
+
+// Global variables to store CSV data
+var csvJudges = [];
+var csvClasses = [];
+var csvData = [];
+
+// Function to load and parse CSV data from dogs.csv
+async function loadCSVData() {
+    try {
+        console.log('🔄 Loading CSV data from data/dogs.csv...');
+        
+        // Fetch the CSV file
+        const response = await fetch('data/dogs.csv');
+        if (!response.ok) {
+            throw new Error('CSV file not found at data/dogs.csv');
+        }
+        
+        const csvText = await response.text();
+        console.log('✅ CSV file loaded successfully');
+        
+        // Parse CSV data
+        parseCSVData(csvText);
+        
+        // Update dropdowns after loading data
+        updateAllDropdownsWithCSVData();
+        
+        console.log('✅ CSV data processed:', {
+            totalRecords: csvData.length,
+            uniqueJudges: csvJudges.length,
+            uniqueClasses: csvClasses.length
+        });
+        
+        console.log('📋 Available Judges:', csvJudges);
+        console.log('📋 Available Classes:', csvClasses);
+        
+    } catch (error) {
+        console.warn('❌ Could not load CSV data:', error.message);
+        console.log('📝 Using default dropdown data instead');
+        
+        // Fallback to default data if CSV loading fails
+        useDefaultDropdownData();
+    }
+}
+
+// Function to parse the CSV data based on your format
+function parseCSVData(csvText) {
+    csvData = [];
+    csvJudges = [];
+    csvClasses = [];
     
+    const lines = csvText.split('\n');
+    
+    lines.forEach(function(line, index) {
+        line = line.trim();
+        if (!line) return; // Skip empty lines
+        
+        try {
+            // Your format: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
+            // We need to extract the class (4th column) and judge (last column)
+            
+            // Parse the line by looking for patterns
+            const regNumber = line.substring(0, 10); // 07-0001-01
+            const restOfLine = line.substring(10); // BJShirley OttmerPatrol 1Linda Alberda
+            
+            // Method 1: Try to identify the class and judge by common patterns
+            let className = '';
+            let judgeName = '';
+            
+            // Common class patterns to look for
+            const classPatterns = [
+                'Patrol', 'Detective', 'Investigator', 'Super Sleuth', 'Private Inv',
+                'Novice A', 'Novice B', 'Open A', 'Open B', 'Excellent A', 'Excellent B',
+                'Masters', 'FAST', 'Jumpers', 'Standard', 'Premier', 'Wildcard', 'Snooker'
+            ];
+            
+            // Find class pattern in the line
+            for (let pattern of classPatterns) {
+                const patternIndex = restOfLine.indexOf(pattern);
+                if (patternIndex !== -1) {
+                    // Found a class pattern
+                    const classStart = patternIndex;
+                    
+                    // Look for the end of class (usually followed by a number then judge name)
+                    let classEnd = classStart + pattern.length;
+                    
+                    // Check if there's a number after the class (like "Patrol 1")
+                    const afterPattern = restOfLine.substring(classEnd).trim();
+                    const numberMatch = afterPattern.match(/^(\s*\d+)/);
+                    if (numberMatch) {
+                        classEnd += numberMatch[0].length;
+                        className = restOfLine.substring(classStart, classEnd).trim();
+                    } else {
+                        className = pattern;
+                    }
+                    
+                    // Everything after the class should be the judge name
+                    judgeName = restOfLine.substring(classEnd).trim();
+                    
+                    break;
+                }
+            }
+            
+            // Method 2: If no pattern found, try a different approach
+            if (!className || !judgeName) {
+                // Split by capital letters to identify sections
+                const parts = restOfLine.split(/(?=[A-Z][a-z])/);
+                
+                if (parts.length >= 3) {
+                    // Assume last 2 parts are judge name
+                    judgeName = parts.slice(-2).join('').trim();
+                    
+                    // Look for class in remaining parts
+                    const remaining = parts.slice(0, -2).join('');
+                    const classMatch = remaining.match(/(Patrol|Detective|Investigator|Super Sleuth|Private Inv|Novice|Open|Excellent|Masters|FAST|Jumpers|Standard|Premier|Wildcard|Snooker)(\s*\d*)/);
+                    if (classMatch) {
+                        className = classMatch[0].trim();
+                    }
+                }
+            }
+            
+            // Method 3: Manual parsing based on your specific examples
+            if (!className || !judgeName) {
+                // For: BJShirley OttmerPatrol 1Linda Alberda
+                // Try to find where class starts by looking for known patterns
+                const lineForAnalysis = restOfLine;
+                
+                // Look for patterns like "Patrol 1", "Detective 2", etc.
+                const classRegex = /(Patrol|Detective|Investigator|Super Sleuth|Private Inv)\s*\d*/g;
+                const classMatch = lineForAnalysis.match(classRegex);
+                
+                if (classMatch) {
+                    className = classMatch[0];
+                    
+                    // Find where this class appears in the line
+                    const classIndex = lineForAnalysis.indexOf(className);
+                    
+                    // Everything after the class is the judge
+                    judgeName = lineForAnalysis.substring(classIndex + className.length).trim();
+                }
+            }
+            
+            // Clean up the names
+            className = className.trim();
+            judgeName = judgeName.trim();
+            
+            // Store the parsed data
+            if (className && judgeName) {
+                csvData.push({
+                    regNumber: regNumber,
+                    line: line,
+                    className: className,
+                    judgeName: judgeName
+                });
+                
+                // Add to unique lists
+                if (className && !csvClasses.includes(className)) {
+                    csvClasses.push(className);
+                }
+                
+                if (judgeName && !csvJudges.includes(judgeName)) {
+                    csvJudges.push(judgeName);
+                }
+            }
+            
+        } catch (error) {
+            console.warn('Error parsing line ' + (index + 1) + ':', line, error);
+        }
+    });
+    
+    // Sort the arrays for better UX
+    csvClasses.sort();
+    csvJudges.sort();
+    
+    console.log('✅ Parsed CSV data:', {
+        classes: csvClasses,
+        judges: csvJudges,
+        sampleData: csvData.slice(0, 3)
+    });
+}
+
+// Enhanced function to populate judge dropdown with CSV data
+function populateJudgeDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Use CSV judges if available, otherwise fall back to default
+    var judges = csvJudges.length > 0 ? csvJudges : [
+        "Amanda Askell", "Andrew Anderson", "Barbara Brown", "Carol Chen", "David Davis",
+        "Emily Evans", "Frank Fisher", "Grace Garcia", "Henry Harris", "Isabel Johnson",
+        "Jack Jackson", "Karen King", "Lisa Lopez", "Michael Miller", "Nancy Nelson"
+    ];
+    
+    judges.forEach(function(judge) {
+        var option = document.createElement('option');
+        option.value = judge;
+        option.textContent = judge;
+        if (judge === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    console.log('✅ Judge dropdown populated with', judges.length, 'judges');
+}
+
+// Enhanced function to populate class dropdown with CSV data
+function populateClassDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Use CSV classes if available, otherwise fall back to default
+    var classes = csvClasses.length > 0 ? csvClasses : [
+        "Agility - Novice", "Agility - Open", "Agility - Excellent", "Agility - Masters",
+        "Jumpers - Novice", "Jumpers - Open", "Jumpers - Excellent", "Jumpers - Masters",
+        "FAST", "Standard", "Premier Standard", "Wildcard", "Snooker"
+    ];
+    
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    console.log('✅ Class dropdown populated with', classes.length, 'classes');
+}
+
+// Function to update all existing dropdowns with CSV data
+function updateAllDropdownsWithCSVData() {
+    // Update all judge dropdowns
+    var judgeSelects = document.querySelectorAll('select[data-type="judge"], .judge-select, select[id*="judge"]');
+    judgeSelects.forEach(function(select) {
+        populateJudgeDropdown(select);
+    });
+    
+    // Update all class dropdowns
+    var classSelects = document.querySelectorAll('select[data-type="class"], .class-select, select[id*="class"][id*="name"]');
+    classSelects.forEach(function(select) {
+        populateClassDropdown(select);
+    });
+    
+    console.log('✅ All dropdowns updated with CSV data');
+}
+
+// Fallback function if CSV loading fails
+function useDefaultDropdownData() {
+    csvJudges = [
+        "Amanda Askell", "Andrew Anderson", "Barbara Brown", "Carol Chen", "David Davis",
+        "Emily Evans", "Frank Fisher", "Grace Garcia", "Henry Harris", "Isabel Johnson"
+    ];
+    
+    csvClasses = [
+        "Agility - Novice", "Agility - Open", "Agility - Excellent", "Agility - Masters",
+        "Jumpers - Novice", "Jumpers - Open", "FAST", "Standard", "Premier"
+    ];
+    
+    updateAllDropdownsWithCSVData();
+    console.log('✅ Using default dropdown data');
+}
+
+// Enhanced trial setup function with CSV data support
+function generateClassesForDayWithCSV(dayNum) {
+    var numClasses = parseInt(document.getElementById('day' + dayNum + '_numClasses').value) || 1;
+    var container = document.getElementById('day' + dayNum + '_classes');
+    
+    if (!container) return;
+    
+    var html = '<h4 style="color: #2c5aa0; margin-bottom: 15px;">Classes for Day ' + dayNum + ':</h4>';
+    
+    for (var c = 1; c <= numClasses; c++) {
+        html += `
+            <div style="background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h5 style="margin: 0 0 15px 0; color: #856404;">Class ${c}</h5>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 15px;">
+                    
+                    <!-- 1. CLASS NAME (DROPDOWN) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Class Name:</label>
+                        <select id="day${dayNum}_class${c}_name" 
+                                data-type="class"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="">-- Select Class --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 2. ROUNDS (DROPDOWN) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Rounds:</label>
+                        <select id="day${dayNum}_class${c}_round" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="1">Round 1</option>
+                            <option value="2">Round 2</option>
+                            <option value="3">Round 3</option>
+                            <option value="4">Round 4</option>
+                            <option value="5">Round 5</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 3. JUDGE (DROPDOWN) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Judge:</label>
+                        <select id="day${dayNum}_class${c}_judge" 
+                                data-type="judge"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="">-- Select Judge --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- FEO Option -->
+                <div style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="day${dayNum}_class${c}_feo" style="margin-right: 8px; transform: scale(1.2);">
+                        <span style="font-weight: bold; color: #2c5aa0;">Offer FEO (For Exhibition Only)</span>
+                    </label>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Populate dropdowns with CSV data
+    setTimeout(function() {
+        populateDropdownsForDay(dayNum);
+    }, 100);
+    
+    console.log('✅ Classes generated for Day ' + dayNum + ' with CSV data support');
+}
+
+// Function to populate dropdowns for a specific day
+function populateDropdownsForDay(dayNum) {
+    // Find all dropdowns for this day and populate them
+    var judgeSelects = document.querySelectorAll(`select[id*="day${dayNum}"][id*="judge"]`);
+    judgeSelects.forEach(function(select) {
+        populateJudgeDropdown(select);
+    });
+    
+    var classSelects = document.querySelectorAll(`select[id*="day${dayNum}"][id*="class"][id*="name"]`);
+    classSelects.forEach(function(select) {
+        populateClassDropdown(select);
+    });
+}
+
+// Initialize CSV loading when the application starts
+function initializeCSVData() {
+    // Load CSV data when user logs in or page loads
+    loadCSVData();
+}
+
+// Enhanced showMainApp function to load CSV data on login
+function showMainAppWithCSV() {
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('mainApp').classList.remove('hidden');
+    
+    if (currentUser) {
+        document.getElementById('userInfo').textContent = 
+            'Welcome, ' + currentUser.fullName + ' (' + currentUser.username + ')';
+    }
+    
+    // Add dashboard buttons
+    addDashboardButton();
+    addFullDashboardButton();
+    
+    // Enable all tabs
+    enableAllTabsOnLogin();
+    
+    // Load CSV data for dropdowns
+    initializeCSVData();
+    
+    console.log('✅ Main app shown with CSV data loading');
+}
+
+// Call this to test CSV loading manually
+function testCSVLoading() {
+    console.log('🧪 Testing CSV loading...');
+    loadCSVData();
+}
+
+console.log('✅ CSV Data Loader initialized - will load judges and classes from data/dogs.csv');
     // Update global variables
     trialConfig = config;
     currentTrial = trialData;
