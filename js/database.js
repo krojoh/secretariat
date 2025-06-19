@@ -652,3 +652,320 @@ if (document.readyState === 'loading') {
 } else {
     console.log('✅ Database.js initialized');
 }
+// Dropdown Population Fix - Add to js/database.js to replace existing functions
+
+// Enhanced CSV parsing with better data extraction
+function parseCSVForDropdowns(csvText) {
+    csvData = [];
+    csvJudges = [];
+    csvClasses = [];
+    
+    var lines = csvText.split('\n');
+    console.log('📄 Processing ' + lines.length + ' lines from CSV');
+    
+    lines.forEach(function(line, index) {
+        line = line.trim();
+        if (!line) return;
+        
+        try {
+            // Parse: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
+            var regNumber = line.substring(0, 10);
+            var restOfLine = line.substring(10);
+            
+            console.log('🔍 Processing line ' + (index + 1) + ':', restOfLine);
+            
+            var className = '';
+            var judgeName = '';
+            
+            // Enhanced pattern matching for classes
+            var classPatterns = [
+                'Patrol 1', 'Patrol 2', 'Patrol 3', 'Patrol 4', 'Patrol 5',
+                'Detective 1', 'Detective 2', 'Detective 3', 'Detective 4', 'Detective 5',
+                'Investigator 1', 'Investigator 2', 'Investigator 3', 'Investigator 4', 'Investigator 5',
+                'Super Sleuth 1', 'Super Sleuth 2', 'Super Sleuth 3', 'Super Sleuth 4', 'Super Sleuth 5',
+                'Private Inv', 'Private Investigation',
+                'Patrol', 'Detective', 'Investigator', 'Super Sleuth'
+            ];
+            
+            // Sort patterns by length (longest first) for better matching
+            classPatterns.sort(function(a, b) { return b.length - a.length; });
+            
+            // Find class pattern in the line
+            for (var i = 0; i < classPatterns.length; i++) {
+                var pattern = classPatterns[i];
+                var patternIndex = restOfLine.indexOf(pattern);
+                if (patternIndex !== -1) {
+                    className = pattern;
+                    
+                    // Everything after the class pattern should be the judge name
+                    var afterClass = restOfLine.substring(patternIndex + pattern.length).trim();
+                    
+                    // Clean up judge name (remove any remaining numbers)
+                    judgeName = afterClass.replace(/^\d+\s*/, '').trim();
+                    
+                    console.log('✅ Found class:', className, 'Judge:', judgeName);
+                    break;
+                }
+            }
+            
+            // Alternative method if no pattern found
+            if (!className || !judgeName) {
+                // Try to split by capital letters to find sections
+                var parts = restOfLine.match(/[A-Z][a-z]*\s*\d*/g);
+                if (parts && parts.length >= 3) {
+                    // Look for known class keywords
+                    for (var j = 0; j < parts.length; j++) {
+                        if (parts[j].match(/(Patrol|Detective|Investigator|Super|Private)/i)) {
+                            className = parts[j];
+                            if (j + 1 < parts.length && /^\d+$/.test(parts[j + 1])) {
+                                className += ' ' + parts[j + 1];
+                                judgeName = parts.slice(j + 2).join(' ');
+                            } else {
+                                judgeName = parts.slice(j + 1).join(' ');
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Store data if we found both class and judge
+            if (className && judgeName) {
+                csvData.push({
+                    regNumber: regNumber,
+                    className: className,
+                    judgeName: judgeName,
+                    line: line
+                });
+                
+                // Add to unique lists
+                if (!csvClasses.includes(className)) {
+                    csvClasses.push(className);
+                }
+                
+                if (!csvJudges.includes(judgeName)) {
+                    csvJudges.push(judgeName);
+                }
+                
+                console.log('📝 Stored:', { class: className, judge: judgeName });
+            } else {
+                console.warn('⚠️ Could not parse line:', line);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error parsing line ' + (index + 1) + ':', line, error);
+        }
+    });
+    
+    // Sort the arrays for better UX
+    csvClasses.sort();
+    csvJudges.sort();
+    
+    console.log('✅ Final CSV parsing results:');
+    console.log('📊 Classes found:', csvClasses);
+    console.log('👨‍⚖️ Judges found:', csvJudges);
+    console.log('📈 Total records:', csvData.length);
+    
+    // Force immediate dropdown update
+    forceUpdateAllDropdowns();
+}
+
+// Force update all dropdowns with CSV data
+function forceUpdateAllDropdowns() {
+    console.log('🔄 Force updating all dropdowns with CSV data...');
+    
+    // Wait a moment then update all dropdowns
+    setTimeout(function() {
+        updateAllExistingDropdowns();
+    }, 100);
+    
+    // Also update after a longer delay to catch any dynamically created dropdowns
+    setTimeout(function() {
+        updateAllExistingDropdowns();
+    }, 1000);
+    
+    // And one more time after an even longer delay
+    setTimeout(function() {
+        updateAllExistingDropdowns();
+    }, 2000);
+}
+
+// Update all existing dropdowns with CSV data
+function updateAllExistingDropdowns() {
+    console.log('🔧 Updating all existing dropdowns...');
+    
+    // Find and update all judge dropdowns
+    var judgeSelects = document.querySelectorAll('select[data-type="judge"], select[id*="judge"], .judge-select');
+    console.log('🔍 Found ' + judgeSelects.length + ' judge dropdowns');
+    
+    judgeSelects.forEach(function(select, index) {
+        console.log('📝 Updating judge dropdown ' + (index + 1));
+        populateJudgeDropdownWithCSV(select);
+    });
+    
+    // Find and update all class dropdowns
+    var classSelects = document.querySelectorAll('select[data-type="class"], select[id*="class"][id*="name"], .class-select');
+    console.log('🔍 Found ' + classSelects.length + ' class dropdowns');
+    
+    classSelects.forEach(function(select, index) {
+        console.log('📝 Updating class dropdown ' + (index + 1));
+        populateClassDropdownWithCSV(select);
+    });
+    
+    console.log('✅ All dropdowns updated with CSV data');
+}
+
+// Enhanced populate judge dropdown with CSV data
+function populateJudgeDropdownWithCSV(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Use CSV judges if available
+    var judges = csvJudges.length > 0 ? csvJudges : [
+        "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"
+    ];
+    
+    console.log('👨‍⚖️ Populating judge dropdown with:', judges);
+    
+    judges.forEach(function(judge) {
+        var option = document.createElement('option');
+        option.value = judge;
+        option.textContent = judge;
+        if (judge === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Add visual indicator that CSV data was loaded
+    selectElement.style.borderColor = '#28a745';
+    selectElement.title = 'Loaded from CSV: ' + judges.length + ' judges';
+    
+    console.log('✅ Judge dropdown populated with ' + judges.length + ' judges');
+}
+
+// Enhanced populate class dropdown with CSV data
+function populateClassDropdownWithCSV(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Use CSV classes if available
+    var classes = csvClasses.length > 0 ? csvClasses : [
+        "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"
+    ];
+    
+    console.log('📚 Populating class dropdown with:', classes);
+    
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Add visual indicator that CSV data was loaded
+    selectElement.style.borderColor = '#28a745';
+    selectElement.title = 'Loaded from CSV: ' + classes.length + ' classes';
+    
+    console.log('✅ Class dropdown populated with ' + classes.length + ' classes');
+}
+
+// Override the original functions to use CSV versions
+function populateJudgeDropdown(selectElement) {
+    populateJudgeDropdownWithCSV(selectElement);
+}
+
+function populateClassDropdown(selectElement) {
+    populateClassDropdownWithCSV(selectElement);
+}
+
+// Enhanced CSV loading with better error handling
+async function loadCSVDataForDropdowns() {
+    try {
+        console.log('🔄 Loading CSV data from data/dogs.csv...');
+        
+        var response = await fetch('data/dogs.csv');
+        if (!response.ok) {
+            throw new Error('CSV file not found at data/dogs.csv (Status: ' + response.status + ')');
+        }
+        
+        var csvText = await response.text();
+        console.log('✅ CSV file loaded successfully, size:', csvText.length, 'characters');
+        console.log('📄 First 200 characters of CSV:', csvText.substring(0, 200));
+        
+        parseCSVForDropdowns(csvText);
+        
+    } catch (error) {
+        console.error('❌ Could not load CSV data:', error.message);
+        console.log('📝 Using default dropdown data instead');
+        useDefaultDropdownData();
+    }
+}
+
+// Enhanced default data fallback
+function useDefaultDropdownData() {
+    csvJudges = [
+        "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames",
+        "Amanda Askell", "Andrew Anderson", "Barbara Brown", "Carol Chen", "David Davis"
+    ];
+    
+    csvClasses = [
+        "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
+        "Agility - Novice", "Agility - Open", "Agility - Excellent", "Agility - Masters"
+    ];
+    
+    console.log('📝 Using default data - Judges:', csvJudges.length, 'Classes:', csvClasses.length);
+    forceUpdateAllDropdowns();
+}
+
+// Manual function to refresh dropdowns (can be called from console)
+function refreshAllDropdowns() {
+    console.log('🔄 Manual dropdown refresh requested...');
+    updateAllExistingDropdowns();
+}
+
+// Manual function to reload CSV data (can be called from console)
+function reloadCSVData() {
+    console.log('🔄 Manual CSV reload requested...');
+    loadCSVDataForDropdowns();
+}
+
+console.log('✅ Enhanced dropdown population system loaded');
+console.log('💡 Manual commands available: refreshAllDropdowns(), reloadCSVData()');
+
+// Auto-refresh dropdowns when new elements are added to the page
+var observer = new MutationObserver(function(mutations) {
+    var shouldUpdate = false;
+    mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length > 0) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && node.tagName === 'SELECT') {
+                    shouldUpdate = true;
+                }
+                if (node.nodeType === 1 && node.querySelectorAll && node.querySelectorAll('select').length > 0) {
+                    shouldUpdate = true;
+                }
+            });
+        }
+    });
+    
+    if (shouldUpdate) {
+        console.log('🔄 New dropdowns detected, updating with CSV data...');
+        setTimeout(updateAllExistingDropdowns, 200);
+    }
+});
+
+// Start observing
+observer.observe(document.body, {
+    childList: true,
+    subtree: true
+});
+
+console.log('👀 Dropdown observer started - will auto-update new dropdowns');
