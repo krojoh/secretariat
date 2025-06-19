@@ -871,3 +871,116 @@ function loadEntryTabWithTrialSelection() { console.log('Entry tab loaded'); }
 function loadEntryFormTabWithTrialSelection() { console.log('Entry form tab loaded'); }
 function loadResultsTabWithTrialSelection() { console.log('Results tab loaded'); }
 function updateAllDisplays() { if (typeof loadUserTrials === 'function') loadUserTrials(); }
+// ADD this missing function to the end of your js/database.js file
+
+function saveTrialUpdates() {
+    if (!currentUser) {
+        alert('Please log in to save trials.');
+        return false;
+    }
+    
+    var trialName = document.getElementById('trialName').value.trim();
+    if (!trialName) {
+        alert('Please enter a trial name.');
+        return false;
+    }
+    
+    if (!currentTrialId) {
+        currentTrialId = 'trial_' + Date.now();
+    }
+    
+    // Use the enhanced configuration collection
+    var config = [];
+    if (typeof collectTrialConfiguration === 'function') {
+        config = collectTrialConfiguration();
+    } else {
+        // Fallback configuration collection
+        config = collectBasicTrialConfiguration();
+    }
+    
+    var trialData = {
+        name: trialName,
+        clubName: document.getElementById('clubName').value || '',
+        location: document.getElementById('trialLocation').value || '',
+        config: config,
+        results: entryResults || [],
+        owner: currentUser.username,
+        created: new Date().toISOString(),
+        updated: new Date().toISOString()
+    };
+    
+    // Save to user trials
+    var userTrials = JSON.parse(localStorage.getItem('trials_' + currentUser.username) || '{}');
+    userTrials[currentTrialId] = trialData;
+    localStorage.setItem('trials_' + currentUser.username, JSON.stringify(userTrials));
+    
+    // Save to public trials
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    publicTrials[currentTrialId] = trialData;
+    localStorage.setItem('publicTrials', JSON.stringify(publicTrials));
+    
+    // Update global variables
+    trialConfig = config;
+    currentTrial = trialData;
+    
+    alert('✅ Trial "' + trialName + '" saved successfully!\n\nConfiguration:\n- ' + config.length + ' class/round combinations\n- Ready for entries');
+    
+    // Update trials display
+    if (typeof loadUserTrials === 'function') {
+        loadUserTrials();
+    }
+    
+    console.log('✅ Trial configuration saved:', trialData);
+    return true;
+}
+
+// Fallback configuration collection if the main one doesn't exist
+function collectBasicTrialConfiguration() {
+    var config = [];
+    var days = parseInt(document.getElementById('trialDays').value) || 1;
+    
+    for (var day = 1; day <= days; day++) {
+        var dayDateElement = document.getElementById('day' + day + '_date');
+        var numClassesElement = document.getElementById('day' + day + '_numClasses');
+        
+        var dayDate = dayDateElement ? dayDateElement.value : '';
+        var numClasses = numClassesElement ? parseInt(numClassesElement.value) || 2 : 2;
+        
+        for (var classNum = 1; classNum <= numClasses; classNum++) {
+            var classNameElement = document.getElementById('day' + day + '_class' + classNum + '_name');
+            var roundsElement = document.getElementById('day' + day + '_class' + classNum + '_rounds');
+            
+            if (classNameElement && roundsElement) {
+                var className = classNameElement.value;
+                var numRounds = parseInt(roundsElement.value);
+                
+                if (className && numRounds) {
+                    for (var round = 1; round <= numRounds; round++) {
+                        var judgeElement = document.getElementById('day' + day + '_class' + classNum + '_round' + round + '_judge');
+                        var feoElement = document.getElementById('day' + day + '_class' + classNum + '_round' + round + '_feo');
+                        
+                        config.push({
+                            day: day,
+                            date: dayDate,
+                            classNum: classNum,
+                            className: className,
+                            round: round,
+                            judge: judgeElement ? judgeElement.value : '',
+                            feoOffered: feoElement ? feoElement.checked : false
+                        });
+                    }
+                }
+            }
+        }
+    }
+    
+    console.log('✅ Collected ' + config.length + ' class/round configurations');
+    return config;
+}
+
+// Also add the main save function if it's missing
+function saveTrialConfiguration() {
+    return saveTrialUpdates();
+}
+
+console.log('✅ Missing save functions added');
