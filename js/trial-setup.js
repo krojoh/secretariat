@@ -470,5 +470,43 @@ function debugTrialSetup() {
 window.debugTrialSetup = debugTrialSetup;
 window.populateAllDropdowns = populateAllDropdowns;
 window.collectTrialConfiguration = collectTrialConfiguration;
+// Quick fix for the HTML reference error
+// Add this to the end of your js/trial-setup.js file or run in console
 
+// Create the missing function that your HTML is trying to call
+function initializeTrialSetup() {
+    console.log('✅ Trial setup initialized via HTML call');
+    
+    // Populate dropdowns if data is available
+    setTimeout(function() {
+        populateAllDropdowns();
+    }, 500);
+    
+    // Any other initialization needed
+    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
+        console.log('✅ CSV data available for trial setup');
+    }
+}
+
+// Also create any other missing functions that might be called
+function initializeTestUsers() {
+    if (typeof createDemoAccounts === 'function') {
+        createDemoAccounts();
+    }
+    console.log('✅ Test users initialized');
+}
+
+// Quick console command to run if needed
+function fixHTMLReferences() {
+    // Create all missing functions
+    window.initializeTrialSetup = initializeTrialSetup;
+    window.initializeTestUsers = initializeTestUsers;
+    
+    console.log('✅ HTML reference errors fixed');
+}
+
+// Auto-run the fix
+fixHTMLReferences();
+
+console.log('✅ HTML compatibility functions added');
 console.log('✅ Clean Trial Setup JS loaded - No conflicts!');
