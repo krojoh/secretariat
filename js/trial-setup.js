@@ -494,3 +494,68 @@ fixHTMLReferences();
 
 console.log('✅ HTML compatibility functions added');
 console.log('✅ Clean Trial Setup JS loaded - No conflicts!');
+// ADD this to the END of js/trial-setup.js
+
+// Populate a single class dropdown
+function populateClassDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Use global CSV data if available
+    var classes = [];
+    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
+        classes = csvClasses;
+    } else {
+        // Fallback classes
+        classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+    }
+    
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator
+    selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
+    
+    console.log('📚 Populated class dropdown with', classes.length, 'classes');
+}
+
+// Populate a single judge dropdown  
+function populateJudgeDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Use global CSV data if available
+    var judges = [];
+    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
+        judges = csvJudges;
+    } else {
+        // Fallback judges
+        judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+    }
+    
+    judges.forEach(function(judgeName) {
+        var option = document.createElement('option');
+        option.value = judgeName;
+        option.textContent = judgeName;
+        if (judgeName === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator
+    selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
+    
+    console.log('👨‍⚖️ Populated judge dropdown with', judges.length, 'judges');
+}
