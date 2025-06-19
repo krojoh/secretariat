@@ -238,9 +238,9 @@ function populateClassDropdown(selectElement) {
     } else {
         // Fallback classes
         classes = [
-            "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
-            "Novice A", "Novice B", "Open A", "Open B", "Utility A", "Utility B",
-            "Excellent A", "Excellent B", "Masters A", "Masters B"
+             "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv", "Det Diversions", "Ranger 1", "Ranger 2", "Ranger 3", "Ranger 4",
+         "Ranger 5", "Dasher 3", "Dasher 4", "Dasher 5", "Dasher 6", "Obedience 1", "Obedience 2", "Obedience 3", "Obedience 4", "Starter", "Advanced", "Pro",
+        "ARF", "Zoom 1", "Zoom 1.5", "Zoom 2", "Games 1", "Games 2", "Games 3", "Games 4"
         ];
         console.log('📚 Using fallback classes:', classes.length);
     }
