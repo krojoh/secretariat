@@ -442,15 +442,21 @@ function createAutoCompleteDropdown(selectElement, dropdownType) {
 }
 
 // UNIFIED DROPDOWN POPULATION FUNCTIONS
+// REPLACE populateClassDropdown and populateJudgeDropdown functions in js/database.js (around line 320)
+
 function populateClassDropdown(selectElement) {
     if (!selectElement) return;
     
+    console.log('📚 Populating class dropdown with', csvClasses.length, 'classes');
+    
+    // Use ALL CSV classes or fallback
     var classes = csvClasses.length > 0 ? csvClasses : 
         ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
     
     var currentValue = selectElement.value;
     selectElement.innerHTML = '<option value="">-- Select Class --</option>';
     
+    // Add ALL classes
     classes.forEach(function(className) {
         var option = document.createElement('option');
         option.value = className;
@@ -459,21 +465,27 @@ function populateClassDropdown(selectElement) {
         selectElement.appendChild(option);
     });
     
-    // Convert to auto-complete
+    console.log('📚 Added ' + classes.length + ' class options');
+    
+    // Enhance with combo autocomplete
     setTimeout(function() {
-        createAutoCompleteDropdown(selectElement, 'class');
+        enhanceDropdownWithAutoComplete(selectElement, 'class');
     }, 100);
 }
 
 function populateJudgeDropdown(selectElement) {
     if (!selectElement) return;
     
+    console.log('👨‍⚖️ Populating judge dropdown with', csvJudges.length, 'judges');
+    
+    // Use ALL CSV judges or fallback
     var judges = csvJudges.length > 0 ? csvJudges : 
         ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
     
     var currentValue = selectElement.value;
     selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
     
+    // Add ALL judges
     judges.forEach(function(judgeName) {
         var option = document.createElement('option');
         option.value = judgeName;
@@ -482,9 +494,11 @@ function populateJudgeDropdown(selectElement) {
         selectElement.appendChild(option);
     });
     
-    // Convert to auto-complete
+    console.log('👨‍⚖️ Added ' + judges.length + ' judge options');
+    
+    // Enhance with combo autocomplete
     setTimeout(function() {
-        createAutoCompleteDropdown(selectElement, 'judge');
+        enhanceDropdownWithAutoComplete(selectElement, 'judge');
     }, 100);
 }
 
