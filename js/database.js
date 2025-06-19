@@ -1761,3 +1761,559 @@ if (document.readyState === 'loading') {
 } else {
     initializeAutoCompleteSystem();
 }
+// FIXED AUTO-COMPLETE DROPDOWN SYSTEM
+// This version properly disables browser autocomplete and ensures custom filtering works
+
+// Convert any select element to a proper auto-complete dropdown
+function makeDropdownAutoComplete(selectElement) {
+    if (!selectElement || selectElement.dataset.autocomplete) return;
+    
+    console.log('🔍 Converting to auto-complete:', selectElement.id);
+    
+    // Mark as processed
+    selectElement.dataset.autocomplete = 'true';
+    
+    // Hide original select
+    selectElement.style.display = 'none';
+    
+    // Create container
+    var container = document.createElement('div');
+    container.className = 'autocomplete-container';
+    container.style.cssText = 'position: relative; width: 100%;';
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    
+    // Create search input with DISABLED browser autocomplete
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'autocomplete-input';
+    
+    // CRITICAL: Disable all browser autocomplete features
+    searchInput.setAttribute('autocomplete', 'off');
+    searchInput.setAttribute('autocorrect', 'off');
+    searchInput.setAttribute('autocapitalize', 'off');
+    searchInput.setAttribute('spellcheck', 'false');
+    searchInput.setAttribute('role', 'combobox');
+    searchInput.setAttribute('aria-expanded', 'false');
+    searchInput.setAttribute('aria-autocomplete', 'list');
+    
+    searchInput.placeholder = selectElement.options[0] ? selectElement.options[0].text : 'Type to search...';
+    searchInput.style.cssText = `
+        width: 100%; 
+        padding: 12px 40px 12px 16px; 
+        border: 2px solid #ddd; 
+        border-radius: 8px; 
+        background: white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 12px center;
+        background-size: 16px;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    `;
+    
+    // Create dropdown list
+    var dropdownList = document.createElement('div');
+    dropdownList.className = 'autocomplete-dropdown';
+    dropdownList.setAttribute('role', 'listbox');
+    dropdownList.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        margin-top: -1px;
+    `;
+    
+    container.appendChild(searchInput);
+    container.appendChild(dropdownList);
+    
+    // Store all options (skip first "-- Select --" option)
+    var allOptions = Array.from(selectElement.options).slice(1);
+    var currentSelectedIndex = -1;
+    
+    console.log('📋 Available options:', allOptions.map(o => o.text));
+    
+    // Function to populate dropdown list
+    function populateList(filteredOptions, searchTerm = '') {
+        dropdownList.innerHTML = '';
+        currentSelectedIndex = -1;
+        
+        console.log('🔍 Filtering with term "' + searchTerm + '", found ' + filteredOptions.length + ' matches');
+        
+        if (filteredOptions.length === 0) {
+            var noResults = document.createElement('div');
+            noResults.className = 'autocomplete-no-results';
+            noResults.textContent = searchTerm ? `No matches for "${searchTerm}"` : 'No options available';
+            noResults.style.cssText = `
+                padding: 16px; 
+                color: #6b7280; 
+                font-style: italic; 
+                text-align: center;
+                background: #f9fafb;
+                border-bottom: 1px solid #e5e7eb;
+            `;
+            dropdownList.appendChild(noResults);
+        } else {
+            filteredOptions.forEach(function(option, index) {
+                var item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.setAttribute('role', 'option');
+                item.dataset.value = option.value;
+                item.dataset.index = index;
+                
+                // Highlight matching text
+                var displayText = option.text;
+                if (searchTerm && searchTerm.length > 0) {
+                    var regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    displayText = option.text.replace(regex, '<mark style="background: #fef08a; color: #854d0e; padding: 0 2px; border-radius: 2px; font-weight: bold;">$1</mark>');
+                }
+                
+                item.innerHTML = displayText;
+                item.style.cssText = `
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f3f4f6;
+                    transition: all 0.2s ease;
+                    font-size: 14px;
+                    position: relative;
+                `;
+                
+                // Mouse events
+                item.addEventListener('mouseenter', function() {
+                    highlightItem(parseInt(this.dataset.index));
+                });
+                
+                item.addEventListener('click', function() {
+                    selectOption(option);
+                });
+                
+                dropdownList.appendChild(item);
+            });
+        }
+        
+        // Update ARIA attributes
+        searchInput.setAttribute('aria-expanded', 'true');
+        dropdownList.setAttribute('aria-activedescendant', '');
+    }
+    
+    // Function to select an option
+    function selectOption(option) {
+        console.log('✅ Selecting option:', option.text);
+        
+        // Update original select
+        selectElement.value = option.value;
+        
+        // Update search input
+        searchInput.value = option.text;
+        searchInput.style.borderColor = '#10b981';
+        searchInput.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+        
+        // Hide dropdown
+        hideDropdown();
+        
+        // Success feedback
+        searchInput.style.background = `white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2310b981' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'/%3e%3c/svg%3e") no-repeat right 12px center`;
+        searchInput.style.backgroundSize = '16px';
+        
+        // Reset background after 2 seconds
+        setTimeout(function() {
+            searchInput.style.background = `white url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") no-repeat right 12px center`;
+            searchInput.style.backgroundSize = '16px';
+            searchInput.style.borderColor = '#ddd';
+            searchInput.style.boxShadow = '';
+        }, 2000);
+        
+        // Trigger change event
+        var event = new Event('change', { bubbles: true });
+        selectElement.dispatchEvent(event);
+    }
+    
+    // Function to hide dropdown
+    function hideDropdown() {
+        dropdownList.style.display = 'none';
+        searchInput.setAttribute('aria-expanded', 'false');
+        currentSelectedIndex = -1;
+    }
+    
+    // Function to show dropdown
+    function showDropdown() {
+        dropdownList.style.display = 'block';
+        searchInput.setAttribute('aria-expanded', 'true');
+    }
+    
+    // Function to highlight an item
+    function highlightItem(index) {
+        var items = dropdownList.querySelectorAll('.autocomplete-item');
+        
+        // Remove highlight from all items
+        items.forEach(function(item) {
+            item.style.backgroundColor = '';
+            item.style.borderLeft = '';
+        });
+        
+        // Highlight selected item
+        if (index >= 0 && index < items.length) {
+            currentSelectedIndex = index;
+            var selectedItem = items[index];
+            selectedItem.style.backgroundColor = '#eff6ff';
+            selectedItem.style.borderLeft = '4px solid #3b82f6';
+            selectedItem.scrollIntoView({ block: 'nearest' });
+            
+            // Update ARIA
+            dropdownList.setAttribute('aria-activedescendant', selectedItem.id || '');
+        }
+    }
+    
+    // ENHANCED INPUT EVENT - This is the key fix!
+    searchInput.addEventListener('input', function(e) {
+        // Prevent browser autocomplete interference
+        e.stopPropagation();
+        
+        var searchTerm = this.value.toLowerCase().trim();
+        console.log('🔍 Input event - searching for:', '"' + searchTerm + '"');
+        
+        // If empty, hide dropdown and clear selection
+        if (searchTerm === '') {
+            hideDropdown();
+            selectElement.value = '';
+            this.style.borderColor = '#ddd';
+            this.style.boxShadow = '';
+            return;
+        }
+        
+        // Enhanced filtering - match start of words and full text
+        var filteredOptions = allOptions.filter(function(option) {
+            var text = option.text.toLowerCase();
+            var matches = text.includes(searchTerm) || 
+                         text.split(' ').some(word => word.startsWith(searchTerm));
+            return matches;
+        });
+        
+        console.log('📋 Filtered results:', filteredOptions.map(o => o.text));
+        
+        // Sort results by relevance
+        filteredOptions.sort(function(a, b) {
+            var aText = a.text.toLowerCase();
+            var bText = b.text.toLowerCase();
+            var aStarts = aText.startsWith(searchTerm);
+            var bStarts = bText.startsWith(searchTerm);
+            
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return aText.localeCompare(bText);
+        });
+        
+        // Show filtered results
+        populateList(filteredOptions, searchTerm);
+        showDropdown();
+        this.style.borderColor = '#3b82f6';
+        this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+    });
+    
+    // PREVENT keydown interference with custom input
+    searchInput.addEventListener('keydown', function(e) {
+        var items = dropdownList.querySelectorAll('.autocomplete-item');
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                e.stopPropagation();
+                var nextIndex = currentSelectedIndex < items.length - 1 ? currentSelectedIndex + 1 : 0;
+                highlightItem(nextIndex);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                e.stopPropagation();
+                var prevIndex = currentSelectedIndex > 0 ? currentSelectedIndex - 1 : items.length - 1;
+                highlightItem(prevIndex);
+                break;
+                
+            case 'Enter':
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentSelectedIndex >= 0 && items[currentSelectedIndex]) {
+                    var selectedValue = items[currentSelectedIndex].dataset.value;
+                    var selectedOption = allOptions.find(opt => opt.value === selectedValue);
+                    if (selectedOption) {
+                        selectOption(selectedOption);
+                    }
+                }
+                break;
+                
+            case 'Escape':
+                e.preventDefault();
+                e.stopPropagation();
+                hideDropdown();
+                this.style.borderColor = '#ddd';
+                this.style.boxShadow = '';
+                break;
+                
+            case 'Tab':
+                // Allow normal tab behavior but hide dropdown
+                hideDropdown();
+                break;
+                
+            default:
+                // For other keys, let the input event handle it
+                break;
+        }
+    });
+    
+    // Focus event
+    searchInput.addEventListener('focus', function() {
+        console.log('📍 Input focused');
+        if (this.value === '' && allOptions.length > 0) {
+            populateList(allOptions);
+            showDropdown();
+        } else if (this.value !== '') {
+            // Re-trigger filtering for current value
+            var event = new Event('input', { bubbles: true });
+            this.dispatchEvent(event);
+        }
+        this.style.borderColor = '#3b82f6';
+        this.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+    });
+    
+    // Blur event
+    searchInput.addEventListener('blur', function() {
+        // Delay hiding dropdown to allow for clicks
+        setTimeout(function() {
+            hideDropdown();
+            searchInput.style.borderColor = '#ddd';
+            searchInput.style.boxShadow = '';
+        }, 150);
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            hideDropdown();
+            searchInput.style.borderColor = '#ddd';
+            searchInput.style.boxShadow = '';
+        }
+    });
+    
+    console.log('✅ Auto-complete dropdown created for:', selectElement.id);
+}
+
+// Quick fix function to replace problematic dropdowns immediately
+function fixAutoCompleteDropdowns() {
+    console.log('🔧 Applying auto-complete fix to existing dropdowns...');
+    
+    // Remove any existing autocomplete containers that might be causing issues
+    document.querySelectorAll('.autocomplete-container').forEach(function(container) {
+        var select = container.querySelector('select');
+        if (select) {
+            // Reset the select
+            select.style.display = '';
+            select.dataset.autocomplete = '';
+            
+            // Move select back to original parent
+            var parent = container.parentNode;
+            parent.insertBefore(select, container);
+            container.remove();
+        }
+    });
+    
+    // Now convert all dropdowns fresh
+    var selects = document.querySelectorAll('select[data-type="class"], select[data-type="judge"]');
+    var count = 0;
+    
+    selects.forEach(function(select) {
+        if (select.options.length > 1) {
+            makeDropdownAutoComplete(select);
+            count++;
+        }
+    });
+    
+    console.log('✅ Fixed ' + count + ' auto-complete dropdowns');
+}
+
+// Enhanced populate functions
+function populateClassDropdownAutoComplete(selectElement) {
+    if (!selectElement) return;
+    
+    var classes = (typeof csvClasses !== 'undefined' && csvClasses.length > 0) ? 
+        csvClasses : ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Convert to auto-complete
+    setTimeout(function() {
+        makeDropdownAutoComplete(selectElement);
+    }, 100);
+}
+
+function populateJudgeDropdownAutoComplete(selectElement) {
+    if (!selectElement) return;
+    
+    var judges = (typeof csvJudges !== 'undefined' && csvJudges.length > 0) ? 
+        csvJudges : ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    judges.forEach(function(judgeName) {
+        var option = document.createElement('option');
+        option.value = judgeName;
+        option.textContent = judgeName;
+        if (judgeName === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Convert to auto-complete
+    setTimeout(function() {
+        makeDropdownAutoComplete(selectElement);
+    }, 100);
+}
+
+// Override existing populate functions
+function populateAllDropdownsWithAutoComplete() {
+    console.log('🔄 Populating all dropdowns with auto-complete...');
+    
+    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
+        populateClassDropdownAutoComplete(select);
+    });
+    
+    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
+        populateJudgeDropdownAutoComplete(select);
+    });
+    
+    console.log('✅ All dropdowns populated with working auto-complete');
+}
+
+// Add enhanced CSS
+function addAutoCompleteCSS() {
+    var style = document.createElement('style');
+    style.id = 'autocomplete-css';
+    style.textContent = `
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .autocomplete-input {
+            outline: none !important;
+        }
+        
+        .autocomplete-input::-webkit-outer-spin-button,
+        .autocomplete-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        .autocomplete-dropdown {
+            font-family: inherit;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* Disable browser autocomplete styling */
+        .autocomplete-input::-webkit-credentials-auto-fill-button {
+            display: none !important;
+        }
+        
+        .autocomplete-input:-webkit-autofill,
+        .autocomplete-input:-webkit-autofill:hover,
+        .autocomplete-input:-webkit-autofill:focus {
+            -webkit-text-fill-color: inherit !important;
+            -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }
+        
+        @media (max-width: 768px) {
+            .autocomplete-dropdown {
+                max-height: 150px;
+            }
+            
+            .autocomplete-item {
+                padding: 14px 16px;
+                font-size: 16px;
+            }
+            
+            .autocomplete-input {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize the fixed system
+function initializeFixedAutoComplete() {
+    console.log('🚀 Initializing FIXED auto-complete system...');
+    
+    // Remove any existing CSS
+    var existingCSS = document.getElementById('autocomplete-css');
+    if (existingCSS) {
+        existingCSS.remove();
+    }
+    
+    // Add proper CSS
+    addAutoCompleteCSS();
+    
+    // Fix existing dropdowns
+    fixAutoCompleteDropdowns();
+    
+    console.log('✅ Fixed auto-complete system initialized');
+}
+
+// Export to global scope
+window.makeDropdownAutoComplete = makeDropdownAutoComplete;
+window.fixAutoCompleteDropdowns = fixAutoCompleteDropdowns;
+window.populateAllDropdownsWithAutoComplete = populateAllDropdownsWithAutoComplete;
+window.initializeFixedAutoComplete = initializeFixedAutoComplete;
+
+// Console commands
+console.log('✅ FIXED Auto-Complete System Loaded');
+console.log('💡 Commands to fix the issue:');
+console.log('  - fixAutoCompleteDropdowns() : Fix existing dropdowns');
+console.log('  - initializeFixedAutoComplete() : Complete fix');
+console.log('  - populateAllDropdownsWithAutoComplete() : Repopulate with fix');
+
+// Auto-run the fix
+setTimeout(function() {
+    initializeFixedAutoComplete();
+}, 1000);
