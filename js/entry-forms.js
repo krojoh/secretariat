@@ -1115,4 +1115,372 @@ function generateDetailedEntriesTable(entries) {
     
     html += '</tbody></table></div>';
     return html;
+    // Cancel Button Fix - Add to js/entry-forms.js or replace existing functions
+
+// Enhanced cancel function that properly returns to dashboard
+function cancelEntryForm() {
+    // Close any open modal
+    var modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+        console.log('✅ Entry form modal closed');
+    }
+    
+    // Clear any form data
+    clearAnyFormData();
+    
+    // Return to dashboard/trials tab
+    returnToDashboard();
+    
+    console.log('✅ Cancelled entry form and returned to dashboard');
+}
+
+// Clear any lingering form data
+function clearAnyFormData() {
+    // Clear any auto-fill status
+    if (typeof hideAutoFillStatus === 'function') {
+        hideAutoFillStatus();
+    }
+    
+    // Reset any form fields that might be lingering
+    var forms = document.querySelectorAll('form');
+    forms.forEach(function(form) {
+        if (form.id && form.id.includes('Entry')) {
+            form.reset();
+        }
+    });
+}
+
+// Function to return to dashboard
+function returnToDashboard() {
+    // Option 1: Go to trials tab
+    if (typeof showTab === 'function') {
+        var trialsTab = document.querySelector('.nav-tab[onclick*="trials"]');
+        if (trialsTab) {
+            showTab('trials', trialsTab);
+            console.log('✅ Switched to trials tab');
+            return;
+        }
+    }
+    
+    // Option 2: Go to main dashboard if function exists
+    if (typeof showDashboard === 'function') {
+        showDashboard();
+        console.log('✅ Returned to main dashboard');
+        return;
+    }
+    
+    // Option 3: Go to entry tab (fallback)
+    if (typeof showTab === 'function') {
+        var entryTab = document.querySelector('.nav-tab[onclick*="entry"]');
+        if (entryTab) {
+            showTab('entry', entryTab);
+            console.log('✅ Returned to entry tab');
+            return;
+        }
+    }
+    
+    // Option 4: Scroll to top (final fallback)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    console.log('✅ Scrolled to top');
+}
+
+// Enhanced entry form generation with proper cancel button
+function showEnhancedTrialEntryFormWithCancel(trialId) {
+    if (trialId) {
+        currentTrialId = trialId;
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[trialId];
+        if (trial) {
+            trialConfig = trial.config || [];
+            entryResults = trial.results || [];
+        }
+    }
+    
+    if (!currentTrialId) {
+        alert('No trial selected! Please select a trial first.');
+        return;
+    }
+    
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var currentTrial = publicTrials[currentTrialId];
+    var trialConfig = currentTrial.config || [];
+    
+    if (trialConfig.length === 0) {
+        alert('Trial has no classes configured. Please set up the trial first.');
+        return;
+    }
+    
+    // Create entry form modal
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    // Build class selection HTML (reuse existing function if available)
+    var classesHTML = '';
+    if (typeof generateClassSelectionHTML === 'function') {
+        classesHTML = generateClassSelectionHTML(trialConfig);
+    } else {
+        classesHTML = generateBasicClassSelectionHTML(trialConfig);
+    }
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📝 Trial Entry Form</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Enter your dog for: ${currentTrial.name || 'Selected Trial'}</p>
+            </div>
+            
+            <form id="enhancedTrialEntryForm" style="padding: 30px;">
+                
+                <!-- Registration Number -->
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #2196f3;">
+                    <h4 style="margin: 0 0 15px 0; color: #1976d2;">🆔 Registration Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Registration Number:</label>
+                        <input type="text" 
+                               id="dogRegNumber" 
+                               placeholder="e.g., 07-0001-01" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               onchange="autoFillDogInfo(this.value)"
+                               oninput="autoFillDogInfo(this.value)">
+                        <small style="color: #666; font-style: italic;">Enter registration number to auto-fill dog and handler information</small>
+                    </div>
+                </div>
+                
+                <!-- Dog Information -->
+                <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #9c27b0;">
+                    <h4 style="margin: 0 0 15px 0; color: #7b1fa2;">🐕 Dog Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Call Name:</label>
+                        <input type="text" 
+                               id="dogCallName" 
+                               placeholder="Dog's call name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                        <small id="autoFillStatus" style="color: #28a745; font-style: italic; display: none;">✅ Auto-filled from registration database</small>
+                    </div>
+                </div>
+                
+                <!-- Handler Information -->
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #4caf50;">
+                    <h4 style="margin: 0 0 15px 0; color: #388e3c;">👤 Handler Information</h4>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Handler Name:</label>
+                        <input type="text" 
+                               id="handlerName" 
+                               placeholder="Handler's full name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Email Address:</label>
+                        <input type="email" 
+                               id="handlerEmail" 
+                               placeholder="handler@email.com" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white;"
+                               required>
+                    </div>
+                </div>
+                
+                <!-- Class Selection -->
+                <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #ff9800;">
+                    <h4 style="margin: 0 0 15px 0; color: #f57c00;">🏆 Class Selection</h4>
+                    <p style="color: #666; margin-bottom: 15px;">Select the classes you want to enter. You can select multiple classes across different days.</p>
+                    ${classesHTML}
+                </div>
+                
+                <!-- Enhanced Submit Buttons with proper cancel -->
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                    <button type="submit" style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">✅ Submit Entry</button>
+                    <button type="button" onclick="cancelEntryForm()" style="background: linear-gradient(45deg, #6c757d, #5a6268); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">🏠 Return to Dashboard</button>
+                    <button type="button" onclick="closeEntryFormOnly()" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">❌ Cancel</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add enhanced form submission handler
+    setupEnhancedFormSubmissionWithCancel();
+    
+    console.log('✅ Enhanced entry form displayed with proper cancel functionality');
+}
+
+// Close form only (without navigation)
+function closeEntryFormOnly() {
+    var modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+        console.log('✅ Entry form closed');
+    }
+}
+
+// Basic class selection HTML generator (fallback)
+function generateBasicClassSelectionHTML(trialConfig) {
+    var classesHTML = '';
+    var classesByDay = {};
+    
+    // Group classes by day
+    trialConfig.forEach(function(config) {
+        if (!classesByDay[config.day]) {
+            classesByDay[config.day] = [];
+        }
+        classesByDay[config.day].push(config);
+    });
+    
+    // Generate class selection interface
+    Object.keys(classesByDay).forEach(function(day) {
+        classesHTML += `
+            <div style="border: 2px solid #2c5aa0; margin: 15px 0; padding: 15px; border-radius: 8px; background: #f8f9fa;">
+                <h4 style="background: #2c5aa0; color: white; margin: -15px -15px 15px -15px; padding: 10px; border-radius: 6px 6px 0 0;">
+                    Day ${day} - ${classesByDay[day][0].date || 'TBD'}
+                </h4>
+        `;
+        
+        classesByDay[day].forEach(function(config, index) {
+            var classId = 'class_' + config.day + '_' + (config.classNum || index) + '_' + (config.round || 1);
+            var classLabel = config.className + ' - Round ' + (config.round || 1) + ' (Judge: ' + (config.judge || 'TBD') + ')';
+            
+            classesHTML += `
+                <div style="background: white; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #d0d0d0;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" name="selectedClasses" value="${classId}" data-class="${config.className}" data-round="${config.round || 1}" data-judge="${config.judge}" data-day="${config.day}" style="margin-right: 10px; transform: scale(1.2);">
+                        <span style="font-weight: bold;">${classLabel}</span>
+                    </label>
+                </div>
+            `;
+        });
+        
+        classesHTML += '</div>';
+    });
+    
+    return classesHTML;
+}
+
+// Enhanced form submission handler
+function setupEnhancedFormSubmissionWithCancel() {
+    const form = document.getElementById('enhancedTrialEntryForm');
+    if (!form) return;
+    
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const regNumber = document.getElementById('dogRegNumber').value.trim();
+        const callName = document.getElementById('dogCallName').value.trim();
+        const handler = document.getElementById('handlerName').value.trim();
+        const email = document.getElementById('handlerEmail').value.trim();
+        
+        // Validate required fields
+        if (!regNumber || !callName || !handler || !email) {
+            alert('❌ Please fill in all required fields.');
+            return false;
+        }
+        
+        // Get selected classes (simplified version)
+        var selectedClasses = [];
+        document.querySelectorAll('input[name="selectedClasses"]:checked').forEach(function(checkbox) {
+            selectedClasses.push({
+                class: checkbox.dataset.class,
+                round: checkbox.dataset.round,
+                judge: checkbox.dataset.judge,
+                day: checkbox.dataset.day,
+                type: 'regular'
+            });
+        });
+        
+        if (selectedClasses.length === 0) {
+            alert('❌ Please select at least one class to enter.');
+            return false;
+        }
+        
+        // Create entry object
+        var newEntry = {
+            regNumber: regNumber,
+            callName: callName,
+            handler: handler,
+            email: email,
+            trials: selectedClasses,
+            entryDate: new Date().toISOString(),
+            confirmationNumber: 'TR' + Date.now(),
+            trialId: currentTrialId,
+            trialName: currentTrial.name
+        };
+        
+        // Add to entries
+        entryResults.push(newEntry);
+        
+        // Save to storage
+        if (typeof saveEntries === 'function') {
+            saveEntries();
+        }
+        
+        // Show confirmation
+        var classListText = selectedClasses.map(function(c) {
+            return c.class + ' Round ' + c.round;
+        }).join('\n  ');
+        
+        alert('✅ Entry submitted successfully!\n\nRegistration: ' + regNumber + '\nHandler: ' + handler + '\nDog: ' + callName + '\nClasses entered:\n  ' + classListText + '\n\nConfirmation Number: ' + newEntry.confirmationNumber);
+        
+        // Clear form
+        form.reset();
+        
+        // Close modal and return to dashboard
+        cancelEntryForm();
+        
+        console.log('✅ Enhanced entry submitted:', newEntry);
+        
+        return false;
+    };
+}
+
+// Override existing entry form functions to use the enhanced version
+function showJuneLeagueEntryForm() {
+    showEnhancedTrialEntryFormWithCancel(currentTrialId);
+}
+
+function showTrialEntryForm(trialId) {
+    showEnhancedTrialEntryFormWithCancel(trialId);
+}
+
+// Auto-fill function (simplified version)
+function autoFillDogInfo(regNumber) {
+    if (!regNumber || regNumber.length < 8) {
+        if (typeof hideAutoFillStatus === 'function') {
+            hideAutoFillStatus();
+        }
+        return;
+    }
+    
+    // Check if we have registration data loaded
+    if (window.registrationDatabase && window.registrationDatabase[regNumber]) {
+        const dogData = window.registrationDatabase[regNumber];
+        
+        const dogCallNameField = document.getElementById('dogCallName');
+        const handlerNameField = document.getElementById('handlerName');
+        
+        if (dogCallNameField && dogData.dogName) {
+            dogCallNameField.value = dogData.dogName;
+            dogCallNameField.style.background = '#e8f5e8';
+        }
+        
+        if (handlerNameField && dogData.handlerName) {
+            handlerNameField.value = dogData.handlerName;
+            handlerNameField.style.background = '#e8f5e8';
+        }
+        
+        if (typeof showAutoFillStatus === 'function') {
+            showAutoFillStatus('✅ Auto-filled: ' + dogData.dogName + ' / ' + dogData.handlerName);
+        }
+        
+        console.log('✅ Auto-filled registration ' + regNumber + ':', dogData);
+    }
+}
+
+console.log('✅ Enhanced entry form with proper cancel button loaded');
 }
