@@ -198,22 +198,6 @@ function populateAllDropdowns() {
     
     console.log('✅ All dropdowns populated');
 }
-
-// Populate a single class dropdown
-function populateClassDropdown(selectElement) {
-    if (!selectElement) return;
-    
-    var currentValue = selectElement.value;
-    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
-    
-    // Use global CSV data if available
-    var classes = [];
-    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
-        classes = csvClasses;
-    } else {
-        // Fallback classes
-        classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
-    }
     
     classes.forEach(function(className) {
         var option = document.createElement('option');
