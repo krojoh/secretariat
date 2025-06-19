@@ -180,42 +180,257 @@ async function loadCSVData() {
     }
 }
 
+// EXACT CSV PARSER FOR YOUR FORMAT - Replace parseCSVData function in js/database.js
+
 function parseCSVData(csvText) {
     csvJudges = [];
     csvClasses = [];
+    csvData = [];
     
     const lines = csvText.split('\n');
+    console.log('📄 Processing CSV with ' + lines.length + ' total lines');
+    console.log('📋 Expected format: Registration, Call Name, Handler, Class, Judges');
     
-    lines.forEach(line => {
+    let successfulParses = 0;
+    let skippedLines = 0;
+    
+    lines.forEach((line, index) => {
         line = line.trim();
         if (!line) return;
         
-        // Parse registration lines: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
-        if (line.match(/^\d{2}-\d{4}-\d{2}/)) {
-            const restOfLine = line.substring(10);
-            
-            // Look for class patterns
-            const classPatterns = [
-                'Patrol 1', 'Patrol 2', 'Detective 2', 'Investigator 3', 'Super Sleuth 4', 'Private Inv'
-            ];
-            
-            for (const pattern of classPatterns) {
-                if (restOfLine.includes(pattern)) {
-                    const afterClass = restOfLine.substring(restOfLine.indexOf(pattern) + pattern.length).trim();
-                    
-                    if (!csvClasses.includes(pattern)) csvClasses.push(pattern);
-                    if (afterClass && !csvJudges.includes(afterClass)) csvJudges.push(afterClass);
-                    break;
-                }
+        try {
+            // Skip header line if it exists
+            if (line.toLowerCase().includes('registration') && line.toLowerCase().includes('call name')) {
+                console.log('📋 Skipping header line:', line);
+                skippedLines++;
+                return;
             }
+            
+            // Parse CSV format: Registration,Call Name,Handler,Class,Judges
+            const parts = line.split(',').map(part => part.trim());
+            
+            if (parts.length >= 5) {
+                const registration = parts[0];
+                const callName = parts[1];
+                const handler = parts[2];
+                const className = parts[3];
+                const judgeName = parts[4];
+                
+                // Validate data
+                if (registration && className && judgeName) {
+                    // Add class to list (preserving original order - NO SORTING)
+                    if (className && !csvClasses.includes(className)) {
+                        csvClasses.push(className);
+                        console.log('➕ Added class:', className, '(position ' + csvClasses.length + ')');
+                    }
+                    
+                    // Add judge to list (preserving original order - NO SORTING)  
+                    if (judgeName && !csvJudges.includes(judgeName)) {
+                        csvJudges.push(judgeName);
+                        console.log('➕ Added judge:', judgeName, '(position ' + csvJudges.length + ')');
+                    }
+                    
+                    // Store complete record
+                    csvData.push({
+                        registration: registration,
+                        callName: callName,
+                        handler: handler,
+                        className: className,
+                        judgeName: judgeName,
+                        lineNumber: index + 1
+                    });
+                    
+                    successfulParses++;
+                } else {
+                    if (index < 10) { // Only log first 10 issues
+                        console.warn('⚠️ Line ' + (index + 1) + ' missing required data:', {
+                            registration: registration,
+                            className: className,
+                            judgeName: judgeName
+                        });
+                    }
+                }
+            } else {
+                if (index < 10) { // Only log first 10 format issues
+                    console.warn('⚠️ Line ' + (index + 1) + ' has wrong format (expected 5 columns, got ' + parts.length + '):', line);
+                }
+                skippedLines++;
+            }
+            
+        } catch (error) {
+            if (index < 10) { // Only log first 10 errors
+                console.error('❌ Error parsing line ' + (index + 1) + ':', error.message);
+            }
+            skippedLines++;
         }
     });
     
-    csvClasses.sort();
-    csvJudges.sort();
+    // DO NOT SORT - preserve original order from CSV
+    console.log('✅ CSV Parsing Complete:');
+    console.log('📊 Total lines processed:', lines.length);
+    console.log('✅ Successfully parsed:', successfulParses);
+    console.log('⏭️ Skipped lines:', skippedLines);
+    console.log('📚 Classes found (in original order):', csvClasses.length);
+    console.log('👨‍⚖️ Judges found (in original order):', csvJudges.length);
     
-    console.log('✅ CSV loaded - Classes:', csvClasses.length, 'Judges:', csvJudges.length);
+    // Show first 20 classes in order
+    console.log('📋 First 20 classes (in CSV order):');
+    csvClasses.slice(0, 20).forEach((className, index) => {
+        console.log(`  ${index + 1}. ${className}`);
+    });
+    
+    // Show first 20 judges in order
+    console.log('👥 First 20 judges (in CSV order):');
+    csvJudges.slice(0, 20).forEach((judgeName, index) => {
+        console.log(`  ${index + 1}. ${judgeName}`);
+    });
+    
+    // Show some sample complete records
+    console.log('📝 Sample complete records:');
+    csvData.slice(0, 5).forEach((record, index) => {
+        console.log(`  ${index + 1}. ${record.registration} | ${record.callName} | ${record.handler} | ${record.className} | ${record.judgeName}`);
+    });
+    
+    if (successfulParses < 100) {
+        console.warn('⚠️ Low success count. Check if CSV format matches expected structure.');
+    }
 }
+
+// Enhanced populate functions that preserve order
+function populateClassDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Use CSV classes in ORIGINAL ORDER (no sorting)
+    var classes = csvClasses.length > 0 ? csvClasses : [
+        "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"
+    ];
+    
+    console.log('📚 Populating class dropdown with ' + classes.length + ' classes (preserving CSV order)');
+    
+    classes.forEach(function(className, index) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator showing order preserved
+    selectElement.style.borderColor = '#007bff';
+    selectElement.title = 'Classes in original CSV order (' + classes.length + ' total)';
+    
+    console.log('✅ Class dropdown populated with ' + classes.length + ' classes in original order');
+}
+
+function populateJudgeDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Use CSV judges in ORIGINAL ORDER (no sorting)
+    var judges = csvJudges.length > 0 ? csvJudges : [
+        "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"
+    ];
+    
+    console.log('👨‍⚖️ Populating judge dropdown with ' + judges.length + ' judges (preserving CSV order)');
+    
+    judges.forEach(function(judgeName, index) {
+        var option = document.createElement('option');
+        option.value = judgeName;
+        option.textContent = judgeName;
+        if (judgeName === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator showing order preserved
+    selectElement.style.borderColor = '#007bff';
+    selectElement.title = 'Judges in original CSV order (' + judges.length + ' total)';
+    
+    console.log('✅ Judge dropdown populated with ' + judges.length + ' judges in original order');
+}
+
+// Console command to test the exact parser
+async function testExactCSVParsing() {
+    try {
+        console.log('🧪 Testing exact CSV parsing...');
+        
+        const response = await fetch('data/dogs.csv');
+        if (!response.ok) {
+            throw new Error('CSV file not found');
+        }
+        
+        const csvText = await response.text();
+        console.log('✅ CSV loaded - Size:', Math.round(csvText.length / 1024) + ' KB');
+        
+        // Show first few lines to verify format
+        const lines = csvText.split('\n');
+        console.log('📋 First 5 lines of CSV:');
+        lines.slice(0, 5).forEach((line, index) => {
+            console.log(`${index + 1}: ${line}`);
+        });
+        
+        // Parse with new function
+        parseCSVData(csvText);
+        
+        // Update dropdowns
+        if (typeof populateAllDropdowns === 'function') {
+            populateAllDropdowns();
+            console.log('✅ Dropdowns updated with CSV data in original order');
+        }
+        
+        // Show results summary
+        console.log('\n🎯 RESULTS SUMMARY:');
+        console.log('📊 Total CSV lines:', lines.length);
+        console.log('📚 Classes found:', csvClasses.length);
+        console.log('👨‍⚖️ Judges found:', csvJudges.length);
+        console.log('📝 Complete records:', csvData.length);
+        
+        return {
+            totalLines: lines.length,
+            classes: csvClasses.length,
+            judges: csvJudges.length,
+            records: csvData.length
+        };
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error);
+        return null;
+    }
+}
+
+// Console command to verify dropdown order
+function verifyDropdownOrder() {
+    console.log('🔍 Verifying dropdown order...');
+    
+    console.log('\n📚 Classes in dropdown order:');
+    csvClasses.forEach((className, index) => {
+        console.log(`${index + 1}. ${className}`);
+    });
+    
+    console.log('\n👨‍⚖️ Judges in dropdown order:');
+    csvJudges.forEach((judgeName, index) => {
+        console.log(`${index + 1}. ${judgeName}`);
+    });
+    
+    console.log('\n✅ Order verification complete - data shown as found in CSV');
+}
+
+console.log('✅ Exact CSV parser loaded (preserves original order)');
+console.log('💡 Commands:');
+console.log('  - testExactCSVParsing() : Parse your exact CSV format');
+console.log('  - verifyDropdownOrder() : Check the order of dropdown items');
+
+// Auto-run the test
+console.log('\n🚀 Auto-testing CSV parsing...');
+testExactCSVParsing();
 
 function useDefaultData() {
     csvJudges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
