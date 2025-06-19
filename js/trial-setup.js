@@ -497,21 +497,41 @@ console.log('✅ Clean Trial Setup JS loaded - No conflicts!');
 // ADD this to the END of js/trial-setup.js
 
 // Populate a single class dropdown
+// FIX for multiple "Select Class" placeholder text
+// Replace the populateClassDropdown function in js/trial-setup.js
+
 function populateClassDropdown(selectElement) {
     if (!selectElement) return;
     
+    // Check if already populated to avoid duplicates
+    if (selectElement.options.length > 1) {
+        console.log('🔄 Class dropdown already populated, skipping:', selectElement.id);
+        return;
+    }
+    
     var currentValue = selectElement.value;
-    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Clear existing options completely
+    selectElement.innerHTML = '';
+    
+    // Add single placeholder option
+    var placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = '-- Select Class --';
+    selectElement.appendChild(placeholderOption);
     
     // Use global CSV data if available
     var classes = [];
     if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
         classes = csvClasses;
+        console.log('📚 Using CSV classes:', classes.length);
     } else {
         // Fallback classes
         classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+        console.log('📚 Using fallback classes');
     }
     
+    // Add each class option
     classes.forEach(function(className) {
         var option = document.createElement('option');
         option.value = className;
@@ -525,25 +545,42 @@ function populateClassDropdown(selectElement) {
     // Visual indicator
     selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
     
-    console.log('📚 Populated class dropdown with', classes.length, 'classes');
+    console.log('✅ Populated class dropdown:', selectElement.id, 'with', classes.length, 'classes');
 }
 
-// Populate a single judge dropdown  
+// Also fix the judge dropdown to prevent duplicates
 function populateJudgeDropdown(selectElement) {
     if (!selectElement) return;
     
+    // Check if already populated to avoid duplicates
+    if (selectElement.options.length > 1) {
+        console.log('🔄 Judge dropdown already populated, skipping:', selectElement.id);
+        return;
+    }
+    
     var currentValue = selectElement.value;
-    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Clear existing options completely
+    selectElement.innerHTML = '';
+    
+    // Add single placeholder option
+    var placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = '-- Select Judge --';
+    selectElement.appendChild(placeholderOption);
     
     // Use global CSV data if available
     var judges = [];
     if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
         judges = csvJudges;
+        console.log('👨‍⚖️ Using CSV judges:', judges.length);
     } else {
         // Fallback judges
         judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+        console.log('👨‍⚖️ Using fallback judges');
     }
     
+    // Add each judge option
     judges.forEach(function(judgeName) {
         var option = document.createElement('option');
         option.value = judgeName;
@@ -557,5 +594,143 @@ function populateJudgeDropdown(selectElement) {
     // Visual indicator
     selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
     
-    console.log('👨‍⚖️ Populated judge dropdown with', judges.length, 'judges');
+    console.log('✅ Populated judge dropdown:', selectElement.id, 'with', judges.length, 'judges');
 }
+
+// Enhanced populateAllDropdowns to prevent multiple calls
+function populateAllDropdowns() {
+    console.log('🔄 Starting dropdown population...');
+    
+    // Populate class dropdowns (only unpopulated ones)
+    var classDropdowns = document.querySelectorAll('select[data-type="class"]');
+    var classCount = 0;
+    classDropdowns.forEach(function(select) {
+        if (select.options.length <= 1) { // Only populate if not already populated
+            populateClassDropdown(select);
+            classCount++;
+        }
+    });
+    
+    // Populate judge dropdowns (only unpopulated ones)
+    var judgeDropdowns = document.querySelectorAll('select[data-type="judge"]');
+    var judgeCount = 0;
+    judgeDropdowns.forEach(function(select) {
+        if (select.options.length <= 1) { // Only populate if not already populated
+            populateJudgeDropdown(select);
+            judgeCount++;
+        }
+    });
+    
+    console.log('✅ Populated', classCount, 'class dropdowns and', judgeCount, 'judge dropdowns');
+}
+
+// Fix the generateSingleClass function to not create duplicate placeholders
+function generateSingleClass(dayNum, classNum) {
+    return `
+        <div class="class-setup" style="background: #fff3cd; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h6 style="margin: 0 0 20px 0; color: #856404; font-weight: bold;">Class ${classNum}</h6>
+            
+            <!-- Class Name and Rounds Selection -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">Class Name:</label>
+                    <select id="day${dayNum}_class${classNum}_name" 
+                            data-type="class"
+                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">How Many Rounds:</label>
+                    <select id="day${dayNum}_class${classNum}_rounds" 
+                            onchange="generateRoundsForClass(${dayNum}, ${classNum})"
+                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
+                        <option value="">How Many Rounds</option>
+                        <option value="1">1 Round</option>
+                        <option value="2">2 Rounds</option>
+                        <option value="3">3 Rounds</option>
+                        <option value="4">4 Rounds</option>
+                        <option value="5">5 Rounds</option>
+                        <option value="6">6 Rounds</option>
+                        <option value="7">7 Rounds</option>
+                        <option value="8">8 Rounds</option>
+                        <option value="9">9 Rounds</option>
+                        <option value="10">10 Rounds</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Rounds Container - Judges will be created here -->
+            <div id="day${dayNum}_class${classNum}_rounds_container">
+                <p style="color: #666; font-style: italic; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">
+                    Select number of rounds above to configure judges for each round
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+// Immediate fix function - run this to fix current dropdowns
+function fixCurrentDropdowns() {
+    console.log('🔧 Fixing current dropdowns...');
+    
+    // Find all class dropdowns and fix them
+    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
+        // Remove duplicate options
+        var seenOptions = new Set();
+        var optionsToRemove = [];
+        
+        for (var i = 0; i < select.options.length; i++) {
+            var option = select.options[i];
+            var optionText = option.textContent;
+            
+            if (seenOptions.has(optionText)) {
+                optionsToRemove.push(option);
+            } else {
+                seenOptions.add(optionText);
+            }
+        }
+        
+        // Remove duplicates
+        optionsToRemove.forEach(function(option) {
+            option.remove();
+        });
+        
+        console.log('✅ Fixed class dropdown:', select.id);
+    });
+    
+    // Find all judge dropdowns and fix them
+    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
+        // Remove duplicate options
+        var seenOptions = new Set();
+        var optionsToRemove = [];
+        
+        for (var i = 0; i < select.options.length; i++) {
+            var option = select.options[i];
+            var optionText = option.textContent;
+            
+            if (seenOptions.has(optionText)) {
+                optionsToRemove.push(option);
+            } else {
+                seenOptions.add(optionText);
+            }
+        }
+        
+        // Remove duplicates
+        optionsToRemove.forEach(function(option) {
+            option.remove();
+        });
+        
+        console.log('✅ Fixed judge dropdown:', select.id);
+    });
+    
+    console.log('✅ All current dropdowns fixed!');
+}
+
+// Console command to run immediately
+console.log('💡 Run fixCurrentDropdowns() to fix existing dropdowns');
+console.log('💡 Updated functions will prevent future duplicates');
+
+// Auto-run the fix
+setTimeout(fixCurrentDropdowns, 1000);
