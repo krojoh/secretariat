@@ -346,4 +346,95 @@ function improveTabs() {
     document.head.appendChild(style);
     console.log('✅ Enhanced tab styling applied');
 }
+/* ENHANCED TAB STYLING - Add to your CSS file or create new css/tabs.css */
 
+.nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #2c5aa0;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 5px;
+    border-radius: 10px 10px 0 0;
+}
+
+.nav-tab {
+    padding: 15px 25px;
+    border: 2px solid #dee2e6;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    border-radius: 8px;
+    margin: 3px;
+    transition: all 0.3s ease;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-decoration: none;
+    position: relative;
+}
+
+/* INACTIVE TABS - Green with good contrast */
+.nav-tab:not(.active) {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white !important;
+    border-color: #1e7e34;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.nav-tab:not(.active):hover {
+    background: linear-gradient(135deg, #218838 0%, #1c7ed6 100%);
+    border-color: #1c7ed6;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* ACTIVE TAB - Blue */
+.nav-tab.active {
+    background: linear-gradient(135deg, #2c5aa0 0%, #1e3d72 100%);
+    color: white !important;
+    border-color: #1e3d72;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+    transform: translateY(-1px);
+}
+
+.nav-tab.active:hover {
+    background: linear-gradient(135deg, #1e3d72 0%, #2c5aa0 100%);
+    transform: translateY(-2px);
+}
+
+/* Ensure all text in tabs is white */
+.nav-tab * {
+    color: inherit !important;
+}
+
+/* Tab content styling */
+.tab-content {
+    background: white;
+    padding: 30px;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-height: 400px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-content:not(.active) {
+    display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-tab {
+        padding: 12px 20px;
+        font-size: 12px;
+        margin: 2px;
+    }
+    
+    .nav-tabs {
+        padding: 3px;
+    }
+}
