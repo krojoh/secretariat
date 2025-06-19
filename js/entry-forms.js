@@ -2,43 +2,148 @@
 // Replace the entry form functions in js/entry-forms.js
 
 // Load and parse registration data from CSV
-function loadRegistrationData() {
-    console.log('📊 Loading registration data from CSV...');
+// FIX CSV REGISTRATION LOOKUP - Replace in js/entry-forms.js
+
+// Enhanced CSV data loading specifically for registration lookup
+async function loadRegistrationDataFromCSV() {
+    console.log('📊 Loading registration data directly from CSV...');
     
-    if (typeof csvData !== 'undefined' && csvData.length > 0) {
-        // CSV data already loaded - parse registration info
-        window.registrationData = {};
+    try {
+        // First try to use existing csvData if available
+        if (typeof csvData !== 'undefined' && csvData && csvData.length > 0) {
+            console.log('🔍 Using existing CSV data:', csvData.length, 'records');
+            return parseRegistrationFromCSVData(csvData);
+        }
         
-        csvData.forEach(function(record) {
-            if (record.length >= 3) {
-                var regNumber = record[0] ? record[0].toString().trim() : '';
-                var callName = record[1] ? record[1].toString().trim() : '';
-                var handlerName = record[2] ? record[2].toString().trim() : '';
-                
-                if (regNumber && callName && handlerName) {
-                    window.registrationData[regNumber] = {
-                        callName: callName,
-                        handlerName: handlerName
-                    };
-                }
+        // If not available, load directly from file
+        console.log('📁 Loading CSV directly from data/dogs.csv...');
+        const response = await fetch('data/dogs.csv');
+        
+        if (!response.ok) {
+            throw new Error('CSV file not found at data/dogs.csv');
+        }
+        
+        const csvText = await response.text();
+        console.log('📄 CSV file loaded, size:', csvText.length, 'characters');
+        
+        // Parse CSV manually (simple parser for registration data)
+        const lines = csvText.split('\n');
+        const csvArray = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line) {
+                // Split by comma, handle quoted fields
+                const fields = parseCSVLine(line);
+                csvArray.push(fields);
             }
-        });
+        }
         
-        console.log('✅ Loaded registration data for', Object.keys(window.registrationData).length, 'dogs');
-        return true;
-    } else {
-        console.log('❌ CSV data not available - will load manually');
+        console.log('📊 Parsed CSV into', csvArray.length, 'records');
+        return parseRegistrationFromCSVData(csvArray);
+        
+    } catch (error) {
+        console.error('❌ Error loading registration data:', error);
         return false;
     }
 }
 
-// Auto-fill dog and handler info based on registration number
+// Simple CSV line parser to handle quoted fields
+function parseCSVLine(line) {
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            fields.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    // Add the last field
+    fields.push(current.trim());
+    
+    return fields;
+}
+
+// Parse registration data from CSV array
+function parseRegistrationFromCSVData(csvArray) {
+    console.log('🔍 Parsing registration data from CSV array...');
+    
+    window.registrationData = {};
+    let foundCount = 0;
+    let skipHeader = true;
+    
+    csvArray.forEach(function(record, index) {
+        // Skip header row
+        if (skipHeader && index === 0) {
+            console.log('📋 Header row:', record.slice(0, 5));
+            // Check if first row looks like header
+            const firstField = record[0] ? record[0].toString().toLowerCase() : '';
+            if (firstField.includes('reg') || firstField.includes('id') || firstField.includes('number')) {
+                console.log('⏭️ Skipping header row');
+                return;
+            }
+            skipHeader = false;
+        }
+        
+        if (record && record.length >= 3) {
+            // Col A = Registration Number (index 0)
+            // Col B = Call Name (index 1) 
+            // Col C = Handler Name (index 2)
+            
+            let regNumber = record[0] ? record[0].toString().trim() : '';
+            let callName = record[1] ? record[1].toString().trim() : '';
+            let handlerName = record[2] ? record[2].toString().trim() : '';
+            
+            // Clean up registration number - remove quotes and extra spaces
+            regNumber = regNumber.replace(/[""'']/g, '').trim();
+            callName = callName.replace(/[""'']/g, '').trim();
+            handlerName = handlerName.replace(/[""'']/g, '').trim();
+            
+            if (regNumber && regNumber.length > 0 && callName && handlerName) {
+                window.registrationData[regNumber] = {
+                    callName: callName,
+                    handlerName: handlerName
+                };
+                foundCount++;
+                
+                // Log first few entries for debugging
+                if (foundCount <= 5) {
+                    console.log(`✅ Reg #${foundCount}: "${regNumber}" -> "${callName}" / "${handlerName}"`);
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Loaded registration data for', foundCount, 'dogs');
+    console.log('📋 Sample registration numbers:', Object.keys(window.registrationData).slice(0, 10));
+    
+    return foundCount > 0;
+}
+
+// Enhanced auto-fill function with better debugging
 function autoFillFromRegistration() {
-    var regNumber = document.getElementById('regNumber').value.trim();
+    var regNumberField = document.getElementById('regNumber');
     var dogNameField = document.getElementById('dogName');
     var handlerNameField = document.getElementById('handlerName');
     
+    if (!regNumberField || !dogNameField || !handlerNameField) {
+        console.log('❌ Required form fields not found');
+        return;
+    }
+    
+    var regNumber = regNumberField.value.trim();
+    
     if (!regNumber) {
+        // Clear fields when empty
         dogNameField.value = '';
         handlerNameField.value = '';
         dogNameField.style.backgroundColor = '';
@@ -46,27 +151,141 @@ function autoFillFromRegistration() {
         return;
     }
     
+    console.log('🔍 Looking up registration number:', regNumber);
+    
     // Ensure registration data is loaded
     if (!window.registrationData) {
-        loadRegistrationData();
+        console.log('📊 Registration data not loaded, loading now...');
+        loadRegistrationDataFromCSV().then(function(success) {
+            if (success) {
+                console.log('✅ Registration data loaded, retrying lookup...');
+                setTimeout(() => autoFillFromRegistration(), 100);
+            } else {
+                console.log('❌ Failed to load registration data');
+                showRegistrationNotFound(regNumber);
+            }
+        });
+        return;
     }
     
-    if (window.registrationData && window.registrationData[regNumber]) {
+    // Try exact match first
+    if (window.registrationData[regNumber]) {
         var data = window.registrationData[regNumber];
         dogNameField.value = data.callName;
         handlerNameField.value = data.handlerName;
         dogNameField.style.backgroundColor = '#d4edda'; // Light green
         handlerNameField.style.backgroundColor = '#d4edda';
-        console.log('✅ Auto-filled:', regNumber, '->', data.callName, '/', data.handlerName);
-    } else {
-        dogNameField.value = '';
-        handlerNameField.value = '';
-        dogNameField.style.backgroundColor = '#f8d7da'; // Light red
-        handlerNameField.style.backgroundColor = '#f8d7da';
-        console.log('❌ Registration number not found:', regNumber);
+        console.log('✅ Found exact match:', regNumber, '->', data.callName, '/', data.handlerName);
+        return;
     }
+    
+    // Try case-insensitive search
+    var regNumberLower = regNumber.toLowerCase();
+    var foundKey = Object.keys(window.registrationData).find(key => 
+        key.toLowerCase() === regNumberLower
+    );
+    
+    if (foundKey) {
+        var data = window.registrationData[foundKey];
+        dogNameField.value = data.callName;
+        handlerNameField.value = data.handlerName;
+        dogNameField.style.backgroundColor = '#d4edda'; // Light green
+        handlerNameField.style.backgroundColor = '#d4edda';
+        console.log('✅ Found case-insensitive match:', foundKey, '->', data.callName, '/', data.handlerName);
+        return;
+    }
+    
+    // Try partial match (contains)
+    var partialMatch = Object.keys(window.registrationData).find(key => 
+        key.toLowerCase().includes(regNumberLower) || regNumberLower.includes(key.toLowerCase())
+    );
+    
+    if (partialMatch) {
+        var data = window.registrationData[partialMatch];
+        dogNameField.value = data.callName + ' (partial match)';
+        handlerNameField.value = data.handlerName;
+        dogNameField.style.backgroundColor = '#fff3cd'; // Light yellow
+        handlerNameField.style.backgroundColor = '#fff3cd';
+        console.log('⚠️ Found partial match:', partialMatch, '->', data.callName, '/', data.handlerName);
+        return;
+    }
+    
+    // No match found
+    showRegistrationNotFound(regNumber);
 }
 
+// Show registration not found state
+function showRegistrationNotFound(regNumber) {
+    var dogNameField = document.getElementById('dogName');
+    var handlerNameField = document.getElementById('handlerName');
+    
+    dogNameField.value = '';
+    handlerNameField.value = '';
+    dogNameField.style.backgroundColor = '#f8d7da'; // Light red
+    handlerNameField.style.backgroundColor = '#f8d7da';
+    dogNameField.placeholder = 'Registration number not found - enter manually';
+    handlerNameField.placeholder = 'Registration number not found - enter manually';
+    
+    // Make fields editable for manual entry
+    dogNameField.readOnly = false;
+    handlerNameField.readOnly = false;
+    
+    console.log('❌ Registration number not found:', regNumber);
+    console.log('🔍 Available registration numbers (first 10):', 
+        window.registrationData ? Object.keys(window.registrationData).slice(0, 10) : 'None loaded');
+}
+
+// Debug function to check CSV data structure
+function debugRegistrationData() {
+    console.log('=== REGISTRATION DATA DEBUG ===');
+    console.log('CSV Data available:', typeof csvData !== 'undefined' ? csvData.length : 'No');
+    console.log('Registration Data loaded:', window.registrationData ? Object.keys(window.registrationData).length : 'No');
+    
+    if (window.registrationData) {
+        var keys = Object.keys(window.registrationData);
+        console.log('First 10 registration numbers:', keys.slice(0, 10));
+        console.log('Sample data:', keys.slice(0, 3).map(key => ({
+            reg: key,
+            dog: window.registrationData[key].callName,
+            handler: window.registrationData[key].handlerName
+        })));
+    }
+    
+    // Try to show raw CSV data structure
+    if (typeof csvData !== 'undefined' && csvData.length > 0) {
+        console.log('Raw CSV sample (first 3 rows):');
+        csvData.slice(0, 3).forEach((row, i) => {
+            console.log(`Row ${i}:`, row.slice(0, 5));
+        });
+    }
+    
+    console.log('=== END DEBUG ===');
+}
+
+// Enhanced initialization
+function initializeRegistrationSystem() {
+    // Load registration data on startup
+    loadRegistrationDataFromCSV().then(function(success) {
+        if (success) {
+            console.log('✅ Registration system initialized with auto-fill data');
+        } else {
+            console.log('⚠️ Registration system initialized without auto-fill data');
+        }
+    });
+    
+    // Make functions globally available
+    window.autoFillFromRegistration = autoFillFromRegistration;
+    window.loadRegistrationDataFromCSV = loadRegistrationDataFromCSV;
+    window.debugRegistrationData = debugRegistrationData;
+    
+    console.log('✅ Registration system functions loaded');
+}
+
+// Auto-initialize
+initializeRegistrationSystem();
+
+console.log('🔧 CSV Registration lookup system loaded');
+console.log('💡 Run debugRegistrationData() to check data structure');
 // Generate class options grouped by day, class, judge, round
 function generateClassOptionsHTML(trialId) {
     console.log('🏆 Generating class options for trial:', trialId);
