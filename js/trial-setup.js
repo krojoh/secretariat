@@ -309,21 +309,9 @@ function populateJudgeDropdown(selectElement) {
     console.log('✅ Populated judge dropdown:', selectElement.id, 'with', judges.length, 'judges');
 }
 
-
-                console.log('✅ CSV data loaded, re-running dropdown population');
-                setTimeout(populateAllDropdowns, 500);
-            }).catch(function(error) {
-                console.log('❌ CSV loading failed:', error);
-                console.log('📚 Using fallback data for dropdowns');
-                populateDropdownsWithFallback();
-            });
-            return;
-        } else {
-            console.log('❌ loadCSVData function not available, using fallback');
-            populateDropdownsWithFallback();
-            return;
-        }
-    }
+// Populate all dropdowns with CSV data - SIMPLIFIED WORKING VERSION
+function populateAllDropdowns() {
+    console.log('🔄 Starting dropdown population...');
     
     // Populate class dropdowns
     document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
@@ -335,52 +323,7 @@ function populateJudgeDropdown(selectElement) {
         populateJudgeDropdown(select);
     });
     
-    console.log('✅ All dropdowns populated with CSV data');
-}
-
-// Fallback function when CSV loading fails
-function populateDropdownsWithFallback() {
-    console.log('📚 Populating dropdowns with fallback data');
-    
-    // Populate class dropdowns
-    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
-        populateClassDropdown(select);
-    });
-    
-    // Populate judge dropdowns
-    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
-        populateJudgeDropdown(select);
-    });
-    
-    console.log('✅ All dropdowns populated with fallback data');
-}
-
-// Force CSV data reload and repopulate dropdowns
-function forceReloadCSVAndPopulate() {
-    console.log('🔄 Force reloading CSV data...');
-    
-    // Clear existing CSV data
-    if (typeof csvClasses !== 'undefined') csvClasses = [];
-    if (typeof csvJudges !== 'undefined') csvJudges = [];
-    
-    // Try to reload CSV data
-    if (typeof loadCSVData === 'function') {
-        loadCSVData().then(function() {
-            console.log('✅ CSV data force reloaded');
-            console.log('📚 Classes found:', typeof csvClasses !== 'undefined' ? csvClasses.length : 0);
-            console.log('👨‍⚖️ Judges found:', typeof csvJudges !== 'undefined' ? csvJudges.length : 0);
-            
-            setTimeout(function() {
-                populateAllDropdowns();
-            }, 500);
-        }).catch(function(error) {
-            console.log('❌ Force reload failed:', error);
-            populateDropdownsWithFallback();
-        });
-    } else {
-        console.log('❌ loadCSVData function not available');
-        populateDropdownsWithFallback();
-    }
+    console.log('✅ All dropdowns populated');
 }
 
 // ===== CONFIGURATION COLLECTION =====
