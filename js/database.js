@@ -2317,3 +2317,433 @@ console.log('  - populateAllDropdownsWithAutoComplete() : Repopulate with fix');
 setTimeout(function() {
     initializeFixedAutoComplete();
 }, 1000);
+// ENHANCED AUTO-COMPLETE DEBUG FOR BOTH CLASS AND JUDGE DROPDOWNS
+// This version tests both dropdown types separately
+
+// Enhanced diagnostic function
+function debugBothDropdownTypes() {
+    console.log('🔍 DEBUGGING BOTH CLASS AND JUDGE DROPDOWNS...');
+    
+    // Check class dropdowns
+    var classSelects = document.querySelectorAll('select[data-type="class"]');
+    var judgeSelects = document.querySelectorAll('select[data-type="judge"]');
+    
+    console.log('📚 CLASS DROPDOWNS:');
+    console.log('- Found ' + classSelects.length + ' class dropdowns');
+    classSelects.forEach(function(select, index) {
+        console.log('  ' + (index + 1) + '. ID: ' + select.id + ', Options: ' + select.options.length);
+    });
+    
+    console.log('👨‍⚖️ JUDGE DROPDOWNS:');
+    console.log('- Found ' + judgeSelects.length + ' judge dropdowns');
+    judgeSelects.forEach(function(select, index) {
+        console.log('  ' + (index + 1) + '. ID: ' + select.id + ', Options: ' + select.options.length);
+    });
+    
+    // Check existing autocomplete containers
+    var classContainers = document.querySelectorAll('.autocomplete-container select[data-type="class"]');
+    var judgeContainers = document.querySelectorAll('.autocomplete-container select[data-type="judge"]');
+    
+    console.log('📦 AUTOCOMPLETE CONTAINERS:');
+    console.log('- Class containers: ' + classContainers.length);
+    console.log('- Judge containers: ' + judgeContainers.length);
+    
+    return {
+        classDropdowns: classSelects.length,
+        judgeDropdowns: judgeSelects.length,
+        classContainers: classContainers.length,
+        judgeContainers: judgeContainers.length
+    };
+}
+
+// Test both dropdown types
+function testBothDropdownTypes() {
+    console.log('🧪 TESTING BOTH DROPDOWN TYPES...');
+    
+    // Test class dropdowns
+    var classInputs = document.querySelectorAll('.autocomplete-container input[data-type="class"], .autocomplete-container input');
+    var judgeInputs = document.querySelectorAll('.autocomplete-container input[data-type="judge"], .autocomplete-container input');
+    
+    // If inputs don't have data-type, we need to identify them by their parent select
+    var allAutoInputs = document.querySelectorAll('.autocomplete-container input.autocomplete-input');
+    
+    console.log('⌨️ FOUND AUTOCOMPLETE INPUTS:');
+    console.log('- Total autocomplete inputs: ' + allAutoInputs.length);
+    
+    var classTestInputs = [];
+    var judgeTestInputs = [];
+    
+    // Identify which inputs belong to which type
+    allAutoInputs.forEach(function(input, index) {
+        var container = input.closest('.autocomplete-container');
+        if (container) {
+            var select = container.querySelector('select');
+            if (select) {
+                var type = select.getAttribute('data-type');
+                console.log('  Input ' + (index + 1) + ': Type = ' + type + ', ID = ' + select.id);
+                
+                if (type === 'class') {
+                    classTestInputs.push({ input: input, select: select, type: 'class' });
+                } else if (type === 'judge') {
+                    judgeTestInputs.push({ input: input, select: select, type: 'judge' });
+                }
+            }
+        }
+    });
+    
+    console.log('📚 CLASS INPUTS: ' + classTestInputs.length);
+    console.log('👨‍⚖️ JUDGE INPUTS: ' + judgeTestInputs.length);
+    
+    // Test class dropdown first
+    if (classTestInputs.length > 0) {
+        console.log('🧪 TESTING CLASS DROPDOWN...');
+        testSpecificDropdown(classTestInputs[0], 'patrol', 'CLASS');
+    }
+    
+    // Test judge dropdown after a delay
+    setTimeout(function() {
+        if (judgeTestInputs.length > 0) {
+            console.log('🧪 TESTING JUDGE DROPDOWN...');
+            testSpecificDropdown(judgeTestInputs[0], 'linda', 'JUDGE');
+        } else {
+            console.log('❌ No judge inputs found to test');
+        }
+    }, 3000);
+    
+    return {
+        classInputs: classTestInputs.length,
+        judgeInputs: judgeTestInputs.length
+    };
+}
+
+// Test a specific dropdown with detailed logging
+function testSpecificDropdown(dropdownInfo, testTerm, label) {
+    var input = dropdownInfo.input;
+    var select = dropdownInfo.select;
+    
+    console.log('🎯 TESTING ' + label + ' DROPDOWN:');
+    console.log('- Input element:', input);
+    console.log('- Select ID:', select.id);
+    console.log('- Select options:', select.options.length);
+    
+    // List available options
+    console.log('- Available options:');
+    Array.from(select.options).slice(1).forEach(function(option, index) {
+        console.log('  ' + (index + 1) + '. ' + option.text);
+    });
+    
+    // Focus the input
+    input.focus();
+    console.log('📍 Focused ' + label + ' input');
+    
+    // Clear any existing value
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Type letter by letter
+    var letters = testTerm.split('');
+    console.log('⌨️ Typing "' + testTerm + '" letter by letter...');
+    
+    letters.forEach(function(letter, index) {
+        setTimeout(function() {
+            var currentValue = testTerm.substring(0, index + 1);
+            input.value = currentValue;
+            
+            console.log('📝 ' + label + ' - Typed: "' + currentValue + '"');
+            
+            // Trigger input event
+            var inputEvent = new Event('input', { bubbles: true });
+            input.dispatchEvent(inputEvent);
+            
+            // Check dropdown visibility
+            var container = input.closest('.autocomplete-container');
+            var dropdown = container ? container.querySelector('.autocomplete-dropdown') : null;
+            
+            if (dropdown) {
+                var isVisible = dropdown.style.display !== 'none';
+                var itemCount = dropdown.querySelectorAll('.autocomplete-item, div').length;
+                console.log('  📋 ' + label + ' - Dropdown visible: ' + isVisible + ', Items: ' + itemCount);
+            } else {
+                console.log('  ❌ ' + label + ' - No dropdown found');
+            }
+            
+        }, index * 800); // Slower typing for better observation
+    });
+}
+
+// Force fix with specific attention to both types
+function forceFixBothDropdownTypes() {
+    console.log('🔧 FORCE FIXING BOTH CLASS AND JUDGE DROPDOWNS...');
+    
+    // Step 1: Remove existing autocomplete containers
+    document.querySelectorAll('.autocomplete-container').forEach(function(container) {
+        var select = container.querySelector('select');
+        if (select) {
+            select.style.display = '';
+            select.removeAttribute('data-autocomplete');
+            container.parentNode.insertBefore(select, container);
+        }
+        container.remove();
+    });
+    
+    // Step 2: Fix class dropdowns
+    var classSelects = document.querySelectorAll('select[data-type="class"]');
+    console.log('📚 Converting ' + classSelects.length + ' class dropdowns...');
+    
+    classSelects.forEach(function(select, index) {
+        console.log('🔄 Converting class dropdown ' + (index + 1) + ': ' + select.id);
+        createSpecificAutoComplete(select, 'class');
+    });
+    
+    // Step 3: Fix judge dropdowns
+    var judgeSelects = document.querySelectorAll('select[data-type="judge"]');
+    console.log('👨‍⚖️ Converting ' + judgeSelects.length + ' judge dropdowns...');
+    
+    judgeSelects.forEach(function(select, index) {
+        console.log('🔄 Converting judge dropdown ' + (index + 1) + ': ' + select.id);
+        createSpecificAutoComplete(select, 'judge');
+    });
+    
+    console.log('✅ Force conversion complete for both types');
+}
+
+// Create autocomplete with type-specific handling
+function createSpecificAutoComplete(selectElement, dropdownType) {
+    if (!selectElement || selectElement.options.length < 2) {
+        console.log('❌ Skipping dropdown - insufficient options');
+        return;
+    }
+    
+    console.log('🛠️ Creating ' + dropdownType.toUpperCase() + ' autocomplete for:', selectElement.id);
+    
+    // Hide original
+    selectElement.style.display = 'none';
+    
+    // Create container
+    var container = document.createElement('div');
+    container.className = 'autocomplete-container';
+    container.setAttribute('data-dropdown-type', dropdownType);
+    container.style.cssText = 'position: relative; width: 100%;';
+    
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    
+    // Create input
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'autocomplete-input';
+    input.setAttribute('data-type', dropdownType);
+    
+    // Aggressive autocomplete blocking
+    input.setAttribute('autocomplete', 'new-password');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+    
+    input.placeholder = dropdownType === 'class' ? 'Type class name...' : 'Type judge name...';
+    input.style.cssText = `
+        width: 100%; 
+        padding: 12px 16px; 
+        border: 2px solid #ddd; 
+        border-radius: 8px; 
+        background: white;
+        font-size: 14px;
+        box-sizing: border-box;
+        font-family: inherit;
+    `;
+    
+    // Create dropdown
+    var dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-dropdown';
+    dropdown.setAttribute('data-type', dropdownType);
+    dropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    `;
+    
+    container.appendChild(input);
+    container.appendChild(dropdown);
+    
+    // Get options
+    var allOptions = Array.from(selectElement.options).slice(1);
+    console.log('📋 ' + dropdownType.toUpperCase() + ' options:', allOptions.map(o => o.text));
+    
+    // Populate dropdown function
+    function populateDropdown(filteredOptions, searchTerm) {
+        dropdown.innerHTML = '';
+        
+        console.log('🔍 ' + dropdownType.toUpperCase() + ' - Populating with ' + filteredOptions.length + ' options for: "' + searchTerm + '"');
+        
+        if (filteredOptions.length === 0) {
+            dropdown.innerHTML = '<div style="padding: 16px; color: #666; text-align: center;">No ' + dropdownType + 's found</div>';
+        } else {
+            filteredOptions.forEach(function(option) {
+                var item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.style.cssText = `
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #eee;
+                    transition: background-color 0.2s;
+                `;
+                
+                // Highlight search term
+                var displayText = option.text;
+                if (searchTerm) {
+                    var regex = new RegExp('(' + searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    displayText = option.text.replace(regex, '<strong style="background: #ffeb3b; padding: 0 2px;">$1</strong>');
+                }
+                item.innerHTML = displayText;
+                
+                // Events
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+                
+                item.addEventListener('click', function() {
+                    console.log('✅ ' + dropdownType.toUpperCase() + ' - Selected:', option.text);
+                    selectElement.value = option.value;
+                    input.value = option.text;
+                    dropdown.style.display = 'none';
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                
+                dropdown.appendChild(item);
+            });
+        }
+    }
+    
+    // Input event with type-specific logging
+    input.addEventListener('input', function(e) {
+        console.log('⌨️ ' + dropdownType.toUpperCase() + ' INPUT - Value: "' + this.value + '"');
+        
+        var searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        // Filter options
+        var filtered = allOptions.filter(function(option) {
+            return option.text.toLowerCase().includes(searchTerm);
+        });
+        
+        console.log('🔍 ' + dropdownType.toUpperCase() + ' - Filtered ' + allOptions.length + ' down to ' + filtered.length);
+        
+        populateDropdown(filtered, searchTerm);
+        dropdown.style.display = 'block';
+    });
+    
+    // Focus event
+    input.addEventListener('focus', function() {
+        console.log('📍 ' + dropdownType.toUpperCase() + ' input focused');
+        
+        if (this.value === '') {
+            populateDropdown(allOptions, '');
+            dropdown.style.display = 'block';
+        }
+    });
+    
+    // Blur event
+    input.addEventListener('blur', function() {
+        setTimeout(function() {
+            dropdown.style.display = 'none';
+        }, 200);
+    });
+    
+    console.log('✅ ' + dropdownType.toUpperCase() + ' autocomplete setup complete');
+}
+
+// Complete test for both types
+function completeTestBothTypes() {
+    console.log('🚀 RUNNING COMPLETE TEST FOR BOTH DROPDOWN TYPES...');
+    
+    // Step 1: Debug current state
+    debugBothDropdownTypes();
+    
+    // Step 2: Force fix both types
+    forceFixBothDropdownTypes();
+    
+    // Step 3: Wait and test both types
+    setTimeout(function() {
+        console.log('🧪 Testing both dropdown types...');
+        testBothDropdownTypes();
+    }, 2000);
+    
+    console.log('✅ Complete test initiated for both class and judge dropdowns');
+}
+
+// Manual test functions for each type
+function testClassDropdownOnly() {
+    var classInputs = document.querySelectorAll('.autocomplete-container select[data-type="class"]');
+    if (classInputs.length > 0) {
+        var container = classInputs[0].closest('.autocomplete-container');
+        var input = container.querySelector('input');
+        if (input) {
+            testSpecificDropdown({ input: input, select: classInputs[0] }, 'patrol', 'CLASS');
+        }
+    } else {
+        console.log('❌ No class dropdowns found');
+    }
+}
+
+function testJudgeDropdownOnly() {
+    var judgeSelects = document.querySelectorAll('.autocomplete-container select[data-type="judge"]');
+    if (judgeSelects.length > 0) {
+        var container = judgeSelects[0].closest('.autocomplete-container');
+        var input = container.querySelector('input');
+        if (input) {
+            testSpecificDropdown({ input: input, select: judgeSelects[0] }, 'linda', 'JUDGE');
+        }
+    } else {
+        console.log('❌ No judge dropdowns found');
+    }
+}
+
+// Export functions
+window.debugBothDropdownTypes = debugBothDropdownTypes;
+window.testBothDropdownTypes = testBothDropdownTypes;
+window.forceFixBothDropdownTypes = forceFixBothDropdownTypes;
+window.completeTestBothTypes = completeTestBothTypes;
+window.testClassDropdownOnly = testClassDropdownOnly;
+window.testJudgeDropdownOnly = testJudgeDropdownOnly;
+
+// Console instructions
+console.log('🔧 ENHANCED DEBUG TOOLS FOR BOTH DROPDOWN TYPES LOADED');
+console.log('💡 Commands available:');
+console.log('');
+console.log('📊 DIAGNOSTIC:');
+console.log('  - debugBothDropdownTypes() - Check both class and judge dropdowns');
+console.log('');
+console.log('🔧 FIXES:');
+console.log('  - forceFixBothDropdownTypes() - Force rebuild both types');
+console.log('  - completeTestBothTypes() - Full diagnostic and fix');
+console.log('');
+console.log('🧪 TESTING:');
+console.log('  - testClassDropdownOnly() - Test class dropdown typing');
+console.log('  - testJudgeDropdownOnly() - Test judge dropdown typing');
+console.log('  - testBothDropdownTypes() - Test both types');
+console.log('');
+console.log('🚀 QUICK START: Run completeTestBothTypes()');
+
+// Auto-run the complete test
+setTimeout(function() {
+    console.log('🔄 Auto-running complete test for both types in 2 seconds...');
+    setTimeout(completeTestBothTypes, 2000);
+}, 1000);
