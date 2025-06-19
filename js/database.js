@@ -1311,3 +1311,235 @@ window.debugDropdownData = debugDropdownData;
 
 console.log('✅ Fixed Combo Dropdown + Auto-Complete System Loaded');
 console.log('💡 Run debugDropdownData() to check loaded data');
+// ADD this to the END of js/database.js
+
+// ===== TRUE COMBO DROPDOWN SYSTEM =====
+
+function createTrueComboDropdown(selectElement, dropdownType) {
+    if (!selectElement || selectElement.dataset.comboFixed) return;
+    
+    console.log('🔧 Creating TRUE combo dropdown for:', selectElement.id);
+    selectElement.dataset.comboFixed = 'true';
+    
+    // Don't hide the original select - keep it visible
+    selectElement.style.position = 'relative';
+    selectElement.style.zIndex = '1';
+    
+    // Create container
+    var container = document.createElement('div');
+    container.className = 'true-combo-container';
+    container.style.cssText = 'position: relative; width: 100%;';
+    
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    
+    // Create search input that appears ON TOP when typing
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'combo-search-input';
+    searchInput.placeholder = 'Type to search or use dropdown...';
+    searchInput.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 20px;
+        height: 100%;
+        padding: 8px 12px;
+        border: 2px solid transparent;
+        background: transparent;
+        font-size: inherit;
+        font-family: inherit;
+        z-index: 5;
+        box-sizing: border-box;
+        display: none;
+    `;
+    
+    // Disable browser autocomplete
+    searchInput.setAttribute('autocomplete', 'off');
+    searchInput.setAttribute('autocorrect', 'off');
+    searchInput.setAttribute('spellcheck', 'false');
+    
+    // Create dropdown for search results
+    var searchDropdown = document.createElement('div');
+    searchDropdown.className = 'combo-search-dropdown';
+    searchDropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 10;
+        display: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    `;
+    
+    container.appendChild(searchInput);
+    container.appendChild(searchDropdown);
+    
+    // Get ALL options from CSV data
+    var allOptions = [];
+    
+    if (dropdownType === 'class') {
+        var classes = (typeof csvClasses !== 'undefined' && csvClasses.length > 0) ? 
+            csvClasses : ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+        allOptions = classes.map(c => ({value: c, text: c}));
+    } else if (dropdownType === 'judge') {
+        var judges = (typeof csvJudges !== 'undefined' && csvJudges.length > 0) ? 
+            csvJudges : ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+        allOptions = judges.map(j => ({value: j, text: j}));
+    }
+    
+    console.log('📋 Combo dropdown options for ' + dropdownType + ':', allOptions.length);
+    
+    // Function to populate search results
+    function populateSearchResults(filteredOptions, searchTerm) {
+        searchDropdown.innerHTML = '';
+        
+        if (filteredOptions.length === 0) {
+            searchDropdown.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">No matches found</div>';
+        } else {
+            filteredOptions.forEach(function(option) {
+                var item = document.createElement('div');
+                item.style.cssText = `
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f0f0f0;
+                    transition: background-color 0.2s;
+                `;
+                
+                // Highlight search term
+                var displayText = option.text;
+                if (searchTerm) {
+                    var regex = new RegExp('(' + searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    displayText = option.text.replace(regex, '<mark style="background: #ffeb3b;">$1</mark>');
+                }
+                item.innerHTML = displayText;
+                
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+                
+                item.addEventListener('click', function() {
+                    selectOption(option);
+                });
+                
+                searchDropdown.appendChild(item);
+            });
+        }
+    }
+    
+    // Function to select an option
+    function selectOption(option) {
+        console.log('✅ Selected:', option.text);
+        selectElement.value = option.value;
+        searchInput.value = option.text;
+        hideSearch();
+        
+        // Trigger change event
+        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    // Function to show search mode
+    function showSearch() {
+        searchInput.style.display = 'block';
+        searchInput.style.border = '2px solid #2196f3';
+        searchInput.style.background = 'white';
+        searchInput.focus();
+        selectElement.style.zIndex = '0';
+    }
+    
+    // Function to hide search mode
+    function hideSearch() {
+        searchInput.style.display = 'none';
+        searchDropdown.style.display = 'none';
+        selectElement.style.zIndex = '1';
+    }
+    
+    // Show search when clicking on the select (but not the arrow)
+    selectElement.addEventListener('mousedown', function(e) {
+        // If clicking near the right edge (arrow area), let dropdown work normally
+        var rect = this.getBoundingClientRect();
+        var clickX = e.clientX - rect.left;
+        var selectWidth = rect.width;
+        
+        if (clickX < selectWidth - 30) { // Not clicking the arrow
+            e.preventDefault();
+            showSearch();
+            
+            // Show all options
+            populateSearchResults(allOptions, '');
+            searchDropdown.style.display = 'block';
+        }
+    });
+    
+    // Search input events
+    searchInput.addEventListener('input', function() {
+        var searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            populateSearchResults(allOptions, '');
+        } else {
+            var filtered = allOptions.filter(function(option) {
+                return option.text.toLowerCase().includes(searchTerm);
+            });
+            populateSearchResults(filtered, searchTerm);
+        }
+        
+        searchDropdown.style.display = 'block';
+    });
+    
+    // Hide search when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            hideSearch();
+        }
+    });
+    
+    // Handle escape key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideSearch();
+        }
+    });
+    
+    // Normal select change event
+    selectElement.addEventListener('change', function() {
+        if (this.value) {
+            searchInput.value = this.options[this.selectedIndex].text;
+            console.log('✅ Selected via dropdown:', this.value);
+        }
+    });
+    
+    console.log('✅ True combo dropdown created for:', selectElement.id);
+}
+
+// Override populateAllDropdowns to use combo dropdowns
+var originalPopulateAllDropdowns = populateAllDropdowns;
+function populateAllDropdowns() {
+    // Call original function first
+    if (originalPopulateAllDropdowns) {
+        originalPopulateAllDropdowns();
+    }
+    
+    // Then add combo functionality
+    setTimeout(function() {
+        document.querySelectorAll('select[data-type="class"]:not([data-combo-fixed])').forEach(function(select) {
+            createTrueComboDropdown(select, 'class');
+        });
+        
+        document.querySelectorAll('select[data-type="judge"]:not([data-combo-fixed])').forEach(function(select) {
+            createTrueComboDropdown(select, 'judge');
+        });
+    }, 200);
+}
+
+console.log('✅ True combo dropdown system loaded permanently');
