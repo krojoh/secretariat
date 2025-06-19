@@ -890,7 +890,7 @@ function parseCSVData(csvText) {
     console.log('👨‍⚖️ Total unique judges found:', csvJudges.length);
     
     // Show first few classes and judges for verification
-    console.log('📚 First 10 classes:', csvClasses.slice(0, 10));
+    console.log('📚 First 40 classes:', csvClasses.slice(0, 40));
     console.log('👨‍⚖️ First 10 judges:', csvJudges.slice(0, 10));
     
     // Store registration data for auto-fill
