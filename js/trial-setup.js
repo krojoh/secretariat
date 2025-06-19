@@ -422,7 +422,9 @@ function saveTrialConfiguration() {
     if (typeof loadUserTrials === 'function') {
         loadUserTrials();
     }
-    
+    // Generate shareable entry link
+var entryLink = generateTrialEntryLink(trialId, trialName);
+console.log('Share this link for entries:', entryLink);
     console.log('✅ Trial configuration saved');
 }
 
