@@ -1059,4 +1059,292 @@ function initializeEnhancedSystem() {
     console.log('✅ Edit trials with original selections');
     console.log('✅ Working dropdown menus for judges and classes');
 }
+// Missing Functions Fix - Add these to the END of your js/trial-setup.js file
 
+// Initialize trial setup functionality
+function initializeTrialSetup() {
+    console.log('✅ Trial setup initialized');
+    
+    // Ensure dropdown data is available
+    if (typeof csvJudges !== 'undefined' && typeof csvClasses !== 'undefined') {
+        updateAllDropdownsWithCSVData();
+    }
+    
+    // Initialize any existing forms
+    setTimeout(function() {
+        repopulateExistingDropdowns();
+    }, 500);
+}
+
+// Enhanced generateClassesForDay with CSV data support
+function generateClassesForDay(dayNum) {
+    var numClasses = parseInt(document.getElementById('day' + dayNum + '_numClasses').value) || 1;
+    var container = document.getElementById('day' + dayNum + '_classes');
+    
+    if (!container) return;
+    
+    var html = '<h4 style="color: #2c5aa0; margin-bottom: 15px;">Classes for Day ' + dayNum + ':</h4>';
+    
+    for (var c = 1; c <= numClasses; c++) {
+        html += `
+            <div style="background: #fff3cd; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h5 style="margin: 0 0 15px 0; color: #856404;">Class ${c}</h5>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 15px;">
+                    
+                    <!-- 1. CLASS NAME (DROPDOWN WITH CSV DATA) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Class Name:</label>
+                        <select id="day${dayNum}_class${c}_name" 
+                                data-type="class"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="">-- Select Class --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 2. ROUNDS (DROPDOWN) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Rounds:</label>
+                        <select id="day${dayNum}_class${c}_round" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="1">Round 1</option>
+                            <option value="2">Round 2</option>
+                            <option value="3">Round 3</option>
+                            <option value="4">Round 4</option>
+                            <option value="5">Round 5</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 3. JUDGE (DROPDOWN WITH CSV DATA) -->
+                    <div class="form-group">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Judge:</label>
+                        <select id="day${dayNum}_class${c}_judge" 
+                                data-type="judge"
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="">-- Select Judge --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- FEO Option -->
+                <div style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="day${dayNum}_class${c}_feo" style="margin-right: 8px; transform: scale(1.2);">
+                        <span style="font-weight: bold; color: #2c5aa0;">Offer FEO (For Exhibition Only)</span>
+                    </label>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Populate dropdowns with CSV data after a short delay
+    setTimeout(function() {
+        populateDropdownsForSpecificDay(dayNum);
+    }, 200);
+    
+    console.log('✅ Classes generated for Day ' + dayNum + ' with CSV data support');
+}
+
+// Function to populate dropdowns for a specific day
+function populateDropdownsForSpecificDay(dayNum) {
+    // Populate judge dropdowns for this day
+    var judgeSelects = document.querySelectorAll('select[id*="day' + dayNum + '"][id*="judge"]');
+    judgeSelects.forEach(function(select) {
+        if (typeof populateJudgeDropdown === 'function') {
+            populateJudgeDropdown(select);
+        } else {
+            populateJudgeDropdownLocal(select);
+        }
+    });
+    
+    // Populate class dropdowns for this day
+    var classSelects = document.querySelectorAll('select[id*="day' + dayNum + '"][id*="class"][id*="name"]');
+    classSelects.forEach(function(select) {
+        if (typeof populateClassDropdown === 'function') {
+            populateClassDropdown(select);
+        } else {
+            populateClassDropdownLocal(select);
+        }
+    });
+    
+    console.log('✅ Dropdowns populated for Day ' + dayNum);
+}
+
+// Local fallback functions if main CSV functions aren't available
+function populateJudgeDropdownLocal(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Use CSV data if available, otherwise use fallback
+    var judges = [];
+    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
+        judges = csvJudges;
+    } else {
+        judges = [
+            "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames",
+            "Amanda Askell", "Andrew Anderson", "Barbara Brown", "Carol Chen", "David Davis"
+        ];
+    }
+    
+    judges.forEach(function(judge) {
+        var option = document.createElement('option');
+        option.value = judge;
+        option.textContent = judge;
+        if (judge === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    console.log('✅ Judge dropdown populated locally with ' + judges.length + ' judges');
+}
+
+function populateClassDropdownLocal(selectElement) {
+    if (!selectElement) return;
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Use CSV data if available, otherwise use fallback
+    var classes = [];
+    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
+        classes = csvClasses;
+    } else {
+        classes = [
+            "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
+            "Agility - Novice", "Agility - Open", "Agility - Excellent", "Agility - Masters",
+            "Jumpers - Novice", "Jumpers - Open", "FAST", "Standard", "Premier"
+        ];
+    }
+    
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    console.log('✅ Class dropdown populated locally with ' + classes.length + ' classes');
+}
+
+// Function to repopulate existing dropdowns
+function repopulateExistingDropdowns() {
+    // Find all existing judge dropdowns and repopulate them
+    var allJudgeSelects = document.querySelectorAll('select[data-type="judge"], select[id*="judge"]');
+    allJudgeSelects.forEach(function(select) {
+        populateJudgeDropdownLocal(select);
+    });
+    
+    // Find all existing class dropdowns and repopulate them
+    var allClassSelects = document.querySelectorAll('select[data-type="class"], select[id*="class"][id*="name"]');
+    allClassSelects.forEach(function(select) {
+        populateClassDropdownLocal(select);
+    });
+    
+    if (allJudgeSelects.length > 0 || allClassSelects.length > 0) {
+        console.log('✅ Repopulated ' + allJudgeSelects.length + ' judge dropdowns and ' + allClassSelects.length + ' class dropdowns');
+    }
+}
+
+// Enhanced save trial configuration function
+function saveTrialConfigurationEnhanced() {
+    var trialName = document.getElementById('trialName').value.trim();
+    var clubName = document.getElementById('clubName').value.trim();
+    var location = document.getElementById('trialLocation').value.trim();
+    var days = parseInt(document.getElementById('trialDays').value) || 1;
+    
+    if (!trialName) {
+        alert('❌ Please enter a trial name.');
+        return;
+    }
+    
+    if (!currentUser) {
+        alert('❌ Please log in to save trials.');
+        return;
+    }
+    
+    // Collect all class configurations with correct field names
+    var config = [];
+    
+    for (var day = 1; day <= days; day++) {
+        var dayDateField = document.getElementById('day' + day + '_date');
+        var dayDate = dayDateField ? dayDateField.value : '';
+        
+        var numClassesField = document.getElementById('day' + day + '_numClasses');
+        var classCount = numClassesField ? parseInt(numClassesField.value) || 2 : 2;
+        
+        for (var classNum = 1; classNum <= classCount; classNum++) {
+            var classNameField = document.getElementById('day' + day + '_class' + classNum + '_name');
+            var judgeField = document.getElementById('day' + day + '_class' + classNum + '_judge');
+            var roundField = document.getElementById('day' + day + '_class' + classNum + '_round');
+            var feoField = document.getElementById('day' + day + '_class' + classNum + '_feo');
+            
+            var className = classNameField ? classNameField.value : '';
+            var judge = judgeField ? judgeField.value : '';
+            var round = roundField ? parseInt(roundField.value) || 1 : 1;
+            var feoOffered = feoField ? feoField.checked : false;
+            
+            // Only save if at least class name or judge is specified
+            if (className || judge) {
+                config.push({
+                    day: day,
+                    date: dayDate,
+                    classNum: classNum,
+                    className: className,
+                    round: round,
+                    rounds: round,
+                    judge: judge,
+                    feoOffered: feoOffered
+                });
+            }
+        }
+    }
+    
+    // Save trial data using the saveTrialUpdates function
+    if (typeof saveTrialUpdates === 'function') {
+        // Update global trialConfig before saving
+        trialConfig = config;
+        var result = saveTrialUpdates();
+        
+        if (result) {
+            alert('✅ Trial "' + trialName + '" saved successfully!\n\nConfiguration:\n- ' + config.length + ' classes configured\n- ' + days + ' days\n- Ready for entries');
+        }
+    } else {
+        alert('✅ Trial configuration collected but save function not available.');
+    }
+    
+    console.log('✅ Trial configuration processed:', {
+        name: trialName,
+        days: days,
+        classes: config.length,
+        config: config
+    });
+}
+
+// Function to handle CSV data updates
+function updateDropdownsWithCSVData() {
+    // Wait a bit for CSV data to load, then update dropdowns
+    setTimeout(function() {
+        repopulateExistingDropdowns();
+    }, 1000);
+    
+    console.log('✅ Scheduled dropdown updates with CSV data');
+}
+
+// Initialize when document is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTrialSetup();
+        updateDropdownsWithCSVData();
+    });
+} else {
+    initializeTrialSetup();
+    updateDropdownsWithCSVData();
+}
+
+console.log('✅ Missing functions and enhanced trial setup loaded');
