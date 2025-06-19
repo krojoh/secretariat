@@ -293,82 +293,286 @@ async function loadCSVDataForDropdowns() {
     }
 }
 
+// Improved CSV Parser - Replace the parseCSVForDropdowns function in js/database.js
+
 function parseCSVForDropdowns(csvText) {
     csvData = [];
     csvJudges = [];
     csvClasses = [];
     
     var lines = csvText.split('\n');
+    console.log('📄 Processing ' + lines.length + ' lines from CSV');
     
     lines.forEach(function(line, index) {
         line = line.trim();
         if (!line) return;
         
         try {
-            // Parse: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
-            var regNumber = line.substring(0, 10);
-            var restOfLine = line.substring(10);
+            // Parse your format: 07-0001-01BJShirley OttmerPatrol 1Linda Alberda
+            var regNumber = line.substring(0, 10); // 07-0001-01
+            var restOfLine = line.substring(10); // BJShirley OttmerPatrol 1Linda Alberda
             
+            console.log('🔍 Line ' + (index + 1) + ':', line);
+            console.log('📝 Processing:', restOfLine);
+            
+            var dogName = '';
+            var handlerName = '';
             var className = '';
             var judgeName = '';
             
-            // Look for class patterns
-            var classPatterns = ['Patrol', 'Detective', 'Investigator', 'Super Sleuth', 'Private Inv'];
+            // Strategy: Look for class patterns to split the string
+            var classPatterns = [
+                'Super Sleuth 1', 'Super Sleuth 2', 'Super Sleuth 3', 'Super Sleuth 4', 'Super Sleuth 5',
+                'Detective 1', 'Detective 2', 'Detective 3', 'Detective 4', 'Detective 5',
+                'Investigator 1', 'Investigator 2', 'Investigator 3', 'Investigator 4', 'Investigator 5',
+                'Patrol 1', 'Patrol 2', 'Patrol 3', 'Patrol 4', 'Patrol 5',
+                'Private Inv', 'Private Investigation'
+            ];
             
+            var found = false;
+            
+            // Try each pattern to find the class
             for (var i = 0; i < classPatterns.length; i++) {
                 var pattern = classPatterns[i];
                 var patternIndex = restOfLine.indexOf(pattern);
+                
                 if (patternIndex !== -1) {
-                    var classStart = patternIndex;
-                    var classEnd = classStart + pattern.length;
+                    className = pattern;
                     
-                    // Check for number after class
-                    var afterPattern = restOfLine.substring(classEnd).trim();
-                    var numberMatch = afterPattern.match(/^(\s*\d+)/);
-                    if (numberMatch) {
-                        classEnd += numberMatch[0].length;
-                        className = restOfLine.substring(classStart, classEnd).trim();
+                    // Everything before the class pattern contains dog name and handler
+                    var beforeClass = restOfLine.substring(0, patternIndex);
+                    
+                    // Everything after the class pattern is the judge
+                    var afterClass = restOfLine.substring(patternIndex + pattern.length);
+                    judgeName = afterClass.trim();
+                    
+                    // Now parse the beforeClass part to separate dog name and handler
+                    // Look for capital letters to identify where names start
+                    var nameMatches = beforeClass.match(/[A-Z][a-z]*/g);
+                    
+                    if (nameMatches && nameMatches.length >= 2) {
+                        // First match is likely dog name
+                        dogName = nameMatches[0];
+                        
+                        // Rest are handler name parts
+                        handlerName = nameMatches.slice(1).join(' ');
                     } else {
-                        className = pattern;
+                        // Fallback: try to split by looking for typical name patterns
+                        var capitalLetterSplit = beforeClass.split(/(?=[A-Z])/);
+                        if (capitalLetterSplit.length >= 3) {
+                            dogName = capitalLetterSplit[1] || '';
+                            handlerName = capitalLetterSplit.slice(2).join('').trim();
+                        }
                     }
                     
-                    // Everything after class is judge
-                    judgeName = restOfLine.substring(classEnd).trim();
+                    found = true;
+                    console.log('✅ Parsed - Dog:', dogName, 'Handler:', handlerName, 'Class:', className, 'Judge:', judgeName);
                     break;
                 }
             }
             
-            // Store data
+            // Alternative parsing method if pattern matching failed
+            if (!found) {
+                console.log('⚠️ Pattern matching failed, trying alternative method...');
+                
+                // Try to manually parse based on your examples
+                // Look for known judge names at the end
+                var knownJudgePatterns = [
+                    'Linda Alberda', 'Ginger Alpine', 'Paige Alpine-Malone', 'Anita Ambani', 'Denise Ames',
+                    'Shirley Ottmer', 'Russ Hornfisher'
+                ];
+                
+                for (var j = 0; j < knownJudgePatterns.length; j++) {
+                    var judgePattern = knownJudgePatterns[j];
+                    if (restOfLine.indexOf(judgePattern) !== -1) {
+                        judgeName = judgePattern;
+                        
+                        // Remove judge from the end to get the rest
+                        var withoutJudge = restOfLine.replace(judgePattern, '').trim();
+                        
+                        // Now look for class patterns in what's left
+                        for (var k = 0; k < classPatterns.length; k++) {
+                            var classPattern = classPatterns[k];
+                            if (withoutJudge.indexOf(classPattern) !== -1) {
+                                className = classPattern;
+                                
+                                // What's left should be dog name and handler
+                                var withoutClassAndJudge = withoutJudge.replace(classPattern, '').trim();
+                                
+                                // Parse names from remaining text
+                                var nameMatches = withoutClassAndJudge.match(/[A-Z][a-z]*/g);
+                                if (nameMatches && nameMatches.length >= 2) {
+                                    dogName = nameMatches[0];
+                                    handlerName = nameMatches.slice(1).join(' ');
+                                }
+                                
+                                found = true;
+                                console.log('✅ Alternative parse - Dog:', dogName, 'Handler:', handlerName, 'Class:', className, 'Judge:', judgeName);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Final fallback - manual parsing based on your specific examples
+            if (!found) {
+                console.log('⚠️ Trying manual parsing for line:', restOfLine);
+                
+                // For: BJShirley OttmerPatrol 1Linda Alberda
+                if (restOfLine.includes('Patrol 1')) {
+                    var parts = restOfLine.split('Patrol 1');
+                    className = 'Patrol 1';
+                    judgeName = parts[1].trim();
+                    
+                    var namePart = parts[0].trim();
+                    if (namePart.includes('Shirley')) {
+                        dogName = namePart.substring(0, namePart.indexOf('Shirley')).trim();
+                        handlerName = namePart.substring(namePart.indexOf('Shirley')).trim();
+                    }
+                    found = true;
+                }
+                // Add more specific patterns as needed...
+            }
+            
+            // Store the parsed data if we found all required fields
             if (className && judgeName) {
                 csvData.push({
                     regNumber: regNumber,
+                    dogName: dogName,
+                    handlerName: handlerName,
                     className: className,
                     judgeName: judgeName,
                     line: line
                 });
                 
+                // Add to unique lists
                 if (!csvClasses.includes(className)) {
                     csvClasses.push(className);
+                    console.log('➕ Added class:', className);
                 }
                 
                 if (!csvJudges.includes(judgeName)) {
                     csvJudges.push(judgeName);
+                    console.log('➕ Added judge:', judgeName);
                 }
+            } else {
+                console.warn('❌ Could not fully parse line:', line);
+                console.warn('   Found - Class:', className, 'Judge:', judgeName);
             }
             
         } catch (error) {
-            console.warn('Error parsing line ' + (index + 1) + ':', line, error);
+            console.error('❌ Error parsing line ' + (index + 1) + ':', line, error);
         }
     });
     
+    // Sort the arrays for better UX
     csvClasses.sort();
     csvJudges.sort();
     
-    console.log('✅ Parsed CSV:', {
+    console.log('✅ Final CSV parsing results:');
+    console.log('📊 Total lines processed:', lines.length);
+    console.log('📈 Successfully parsed records:', csvData.length);
+    console.log('📚 Unique classes found (' + csvClasses.length + '):', csvClasses);
+    console.log('👨‍⚖️ Unique judges found (' + csvJudges.length + '):', csvJudges);
+    console.log('📋 Sample parsed data:', csvData.slice(0, 3));
+    
+    // Force immediate dropdown update
+    forceUpdateAllDropdowns();
+    
+    return {
         classes: csvClasses,
-        judges: csvJudges
-    });
+        judges: csvJudges,
+        totalRecords: csvData.length
+    };
 }
+
+// Enhanced manual testing function to help debug parsing
+function testCSVParsing() {
+    console.log('🧪 Testing CSV parsing with sample data...');
+    
+    var sampleLines = [
+        '07-0001-01BJShirley OttmerPatrol 1Linda Alberda',
+        '07-0001-02JaidonShirley OttmerDetective 2Ginger Alpine',
+        '07-0001-03JakeShirley OttmerInvestigator 3Paige Alpine-Malone',
+        '07-0001-04OzoneShirley OttmerSuper Sleuth 4Anita Ambani',
+        '07-0002-01LizRuss HornfisherPrivate InvDenise Ames'
+    ];
+    
+    var testCSV = sampleLines.join('\n');
+    console.log('📝 Test CSV data:');
+    console.log(testCSV);
+    
+    console.log('\n🔄 Running parser...');
+    var result = parseCSVForDropdowns(testCSV);
+    
+    console.log('\n📊 Test Results:');
+    console.log('Classes found:', result.classes);
+    console.log('Judges found:', result.judges);
+    console.log('Total records:', result.totalRecords);
+    
+    return result;
+}
+
+// Function to manually reload CSV with better error reporting
+async function reloadCSVWithDebugging() {
+    try {
+        console.log('🔄 Reloading CSV with enhanced debugging...');
+        
+        var response = await fetch('data/dogs.csv');
+        if (!response.ok) {
+            throw new Error('CSV file not found at data/dogs.csv (Status: ' + response.status + ')');
+        }
+        
+        var csvText = await response.text();
+        console.log('✅ CSV loaded - Size:', csvText.length, 'characters');
+        console.log('📄 Total lines in file:', csvText.split('\n').length);
+        console.log('📝 First 5 lines:');
+        csvText.split('\n').slice(0, 5).forEach(function(line, index) {
+            console.log('  Line ' + (index + 1) + ':', line);
+        });
+        
+        var result = parseCSVForDropdowns(csvText);
+        
+        console.log('\n🎯 Final Summary:');
+        console.log('Expected to find: Multiple classes and judges');
+        console.log('Actually found:', result.classes.length, 'classes and', result.judges.length, 'judges');
+        
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Failed to reload CSV:', error);
+        return null;
+    }
+}
+
+// Enhanced class pattern detection for your specific format
+function detectClassPatterns(text) {
+    var patterns = [
+        /Patrol\s*\d+/g,
+        /Detective\s*\d+/g,
+        /Investigator\s*\d+/g,
+        /Super Sleuth\s*\d+/g,
+        /Private Inv/g
+    ];
+    
+    var found = [];
+    patterns.forEach(function(pattern) {
+        var matches = text.match(pattern);
+        if (matches) {
+            found = found.concat(matches);
+        }
+    });
+    
+    return found;
+}
+
+console.log('✅ Improved CSV parser loaded');
+console.log('🧪 Test functions available:');
+console.log('   - testCSVParsing() : Test with sample data');
+console.log('   - reloadCSVWithDebugging() : Reload CSV with detailed logging');
+console.log('   - detectClassPatterns(text) : Find class patterns in text');
 
 function populateJudgeDropdown(selectElement) {
     if (!selectElement) return;
