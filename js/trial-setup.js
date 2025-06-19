@@ -1,137 +1,163 @@
-// CLEAN TRIAL SETUP JS - Replace js/trial-setup.js entirely with this
+// COMPLETE js/trial-setup.js - Fixed for duplicate placeholder text
 
 // ===== TRIAL SETUP FUNCTIONS =====
 
 // Generate days based on trial days input
 function generateDays() {
-    var days = parseInt(document.getElementById('trialDays').value) || 1;
+    console.log('🔄 generateDays() called');
+    
+    var daysInput = document.getElementById('trialDays') || document.querySelector('select[onchange*="generateDays"]') || document.querySelector('input[type="number"]');
     var container = document.getElementById('daysContainer');
     
+    // If no specific container, create one after the days input
+    if (!container && daysInput) {
+        container = document.createElement('div');
+        container.id = 'daysContainer';
+        container.style.cssText = 'margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 10px;';
+        daysInput.parentNode.appendChild(container);
+        console.log('✅ Created daysContainer');
+    }
+    
     if (!container) {
-        console.log('daysContainer not found');
+        console.error('❌ No container found');
         return;
     }
+    
+    var days = parseInt(daysInput.value) || 2;
+    console.log('📅 Generating ' + days + ' days');
     
     var html = '';
     for (var i = 1; i <= days; i++) {
         html += `
-            <div class="day-container" style="background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 10px; border: 2px solid #2c5aa0;">
+            <div class="day-container" style="background: white; padding: 20px; margin: 15px 0; border-radius: 10px; border: 2px solid #2c5aa0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                 <h4 style="background: #2c5aa0; color: white; margin: -20px -20px 20px -20px; padding: 15px; border-radius: 8px 8px 0 0;">
-                    Day ${i}
+                    📅 Day ${i}
                 </h4>
                 
-                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                    <div style="flex: 1;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Date:</label>
-                        <input type="date" id="day${i}_date" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Date:</label>
+                        <input type="date" id="day${i}_date" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Number of Classes:</label>
-                        <input type="number" id="day${i}_numClasses" min="1" max="20" value="2" onchange="generateClassesForDay(${i})" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #333;">Number of Classes:</label>
+                        <input type="number" id="day${i}_numClasses" min="1" max="20" value="2" 
+                               onchange="generateClassesForDay(${i})" 
+                               style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
                     </div>
                 </div>
                 
-                <div id="day${i}_classes"></div>
+                <div id="day${i}_classes">
+                    <p style="color: #666; text-align: center; padding: 20px; background: #e9ecef; border-radius: 8px; font-style: italic; border: 1px dashed #ccc;">
+                        Configure number of classes above to set up class schedules and judge assignments
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    console.log('✅ Generated HTML for ' + days + ' days');
+    
+    // Generate classes for each day automatically
+    for (var i = 1; i <= days; i++) {
+        generateClassesForDay(i);
+    }
+}
+
+// Generate classes for a specific day - FIXED VERSION
+function generateClassesForDay(dayNum) {
+    console.log('🏫 Generating classes for day ' + dayNum);
+    
+    var numClassesInput = document.getElementById('day' + dayNum + '_numClasses');
+    var container = document.getElementById('day' + dayNum + '_classes');
+    
+    if (!numClassesInput || !container) {
+        console.log('❌ Missing elements for day ' + dayNum);
+        return;
+    }
+    
+    var numClasses = parseInt(numClassesInput.value) || 2;
+    
+    var html = '<h5 style="color: #2c5aa0; margin-bottom: 15px; border-bottom: 2px solid #2c5aa0; padding-bottom: 5px;">Classes for Day ' + dayNum + ':</h5>';
+    
+    for (var c = 1; c <= numClasses; c++) {
+        html += `
+            <div class="class-setup" style="background: #fff3cd; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h6 style="margin: 0 0 20px 0; color: #856404; font-weight: bold;">🏆 Class ${c}</h6>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 8px;">Class Name:</label>
+                        <select id="day${dayNum}_class${c}_name" 
+                                data-type="class"
+                                style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
+                            <!-- NO INITIAL PLACEHOLDER - Will be added by populateClassDropdown -->
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 8px;">Number of Rounds:</label>
+                        <select id="day${dayNum}_class${c}_rounds" 
+                                onchange="generateRoundsForClass(${dayNum}, ${c})"
+                                style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
+                            <option value="">How Many Rounds</option>
+                            <option value="1">1 Round</option>
+                            <option value="2">2 Rounds</option>
+                            <option value="3">3 Rounds</option>
+                            <option value="4">4 Rounds</option>
+                            <option value="5">5 Rounds</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="day${dayNum}_class${c}_rounds_container">
+                    <p style="color: #666; font-style: italic; text-align: center; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">
+                        Select number of rounds above to configure judges for each round
+                    </p>
+                </div>
             </div>
         `;
     }
     
     container.innerHTML = html;
     
-    // Generate classes for each day
-    for (var i = 1; i <= days; i++) {
-        generateClassesForDay(i);
-    }
-    
-    console.log('✅ Generated ' + days + ' days');
-}
-
-// Generate classes for a specific day
-function generateClassesForDay(dayNum) {
-    var numClasses = parseInt(document.getElementById('day' + dayNum + '_numClasses').value) || 2;
-    var container = document.getElementById('day' + dayNum + '_classes');
-    
-    if (!container) return;
-    
-    var html = '<h5 style="color: #2c5aa0; margin-bottom: 15px;">Classes for Day ' + dayNum + ':</h5>';
-    
-    for (var c = 1; c <= numClasses; c++) {
-        html += generateSingleClass(dayNum, c);
-    }
-    
-    container.innerHTML = html;
-    
-    // Populate dropdowns after creation
+    // Populate the dropdowns after creating them
     setTimeout(function() {
-        populateAllDropdowns();
+        for (var c = 1; c <= numClasses; c++) {
+            var classSelect = document.getElementById('day' + dayNum + '_class' + c + '_name');
+            if (classSelect && typeof populateClassDropdown === 'function') {
+                populateClassDropdown(classSelect);
+            }
+        }
     }, 100);
     
     console.log('✅ Generated ' + numClasses + ' classes for Day ' + dayNum);
 }
 
-// Generate a single class configuration
-function generateSingleClass(dayNum, classNum) {
-    return `
-        <div class="class-setup" style="background: #fff3cd; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
-            <h6 style="margin: 0 0 20px 0; color: #856404; font-weight: bold;">Class ${classNum}</h6>
-            
-            <!-- Class Name and Rounds Selection -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">Class Name:</label>
-                    <select id="day${dayNum}_class${classNum}_name" 
-                            data-type="class"
-                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">How Many Rounds:</label>
-                    <select id="day${dayNum}_class${classNum}_rounds" 
-                            onchange="generateRoundsForClass(${dayNum}, ${classNum})"
-                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
-                        <option value="">How Many Rounds</option>
-                        <option value="1">1 Round</option>
-                        <option value="2">2 Rounds</option>
-                        <option value="3">3 Rounds</option>
-                        <option value="4">4 Rounds</option>
-                        <option value="5">5 Rounds</option>
-                        <option value="6">6 Rounds</option>
-                        <option value="7">7 Rounds</option>
-                        <option value="8">8 Rounds</option>
-                        <option value="9">9 Rounds</option>
-                        <option value="10">10 Rounds</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Rounds Container - Judges will be created here -->
-            <div id="day${dayNum}_class${classNum}_rounds_container">
-                <p style="color: #666; font-style: italic; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">
-                    Select number of rounds above to configure judges for each round
-                </p>
-            </div>
-        </div>
-    `;
-}
-
-// Generate judge dropdowns for each round
+// Generate judge dropdowns for each round - FIXED VERSION
 function generateRoundsForClass(dayNum, classNum) {
-    var numRounds = parseInt(document.getElementById('day' + dayNum + '_class' + classNum + '_rounds').value);
+    console.log('⚖️ Generating rounds for Day ' + dayNum + ' Class ' + classNum);
+    
+    var roundsSelect = document.getElementById('day' + dayNum + '_class' + classNum + '_rounds');
     var container = document.getElementById('day' + dayNum + '_class' + classNum + '_rounds_container');
     
-    if (!container || !numRounds) {
-        if (container) {
-            container.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">Select number of rounds above to configure judges for each round</p>';
-        }
+    if (!roundsSelect || !container) {
+        console.log('❌ Missing elements for rounds');
+        return;
+    }
+    
+    var numRounds = parseInt(roundsSelect.value);
+    
+    if (!numRounds) {
+        container.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">Select number of rounds above to configure judges for each round</p>';
         return;
     }
     
     var html = `
         <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; border: 2px solid #2c5aa0;">
             <h6 style="color: #2c5aa0; margin: 0 0 15px 0; text-align: center;">
-                Configure ${numRounds} Round${numRounds > 1 ? 's' : ''} for this Class
+                ⚖️ Configure ${numRounds} Round${numRounds > 1 ? 's' : ''} for this Class
             </h6>
     `;
     
@@ -152,7 +178,7 @@ function generateRoundsForClass(dayNum, classNum) {
                         <select id="day${dayNum}_class${classNum}_round${r}_judge" 
                                 data-type="judge"
                                 style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
-                            <option value="">-- Select Judge --</option>
+                            <!-- NO INITIAL PLACEHOLDER - Will be added by populateJudgeDropdown -->
                         </select>
                     </div>
                     
@@ -174,15 +200,102 @@ function generateRoundsForClass(dayNum, classNum) {
     html += '</div>';
     container.innerHTML = html;
     
-    // Populate the new judge dropdowns
+    // Populate the judge dropdowns
     setTimeout(function() {
-        populateAllDropdowns();
+        for (var r = 1; r <= numRounds; r++) {
+            var judgeSelect = document.getElementById('day' + dayNum + '_class' + classNum + '_round' + r + '_judge');
+            if (judgeSelect && typeof populateJudgeDropdown === 'function') {
+                populateJudgeDropdown(judgeSelect);
+            }
+        }
     }, 100);
     
     console.log('✅ Generated ' + numRounds + ' rounds for Day ' + dayNum + ' Class ' + classNum);
 }
 
-// ===== DROPDOWN POPULATION =====
+// ===== DROPDOWN POPULATION - FIXED VERSIONS =====
+
+// Populate a single class dropdown - FIXED VERSION
+function populateClassDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    // Clear existing options completely
+    selectElement.innerHTML = '';
+    
+    var currentValue = selectElement.value;
+    
+    // Add single placeholder option
+    var placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = '-- Select Class --';
+    selectElement.appendChild(placeholderOption);
+    
+    // Use global CSV data if available
+    var classes = [];
+    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
+        classes = csvClasses;
+    } else {
+        // Fallback classes
+        classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+    }
+    
+    // Add each class option
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator
+    selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
+    
+    console.log('✅ Populated class dropdown:', selectElement.id, 'with', classes.length, 'classes');
+}
+
+// Populate a single judge dropdown - FIXED VERSION
+function populateJudgeDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    // Clear existing options completely
+    selectElement.innerHTML = '';
+    
+    var currentValue = selectElement.value;
+    
+    // Add single placeholder option
+    var placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = '-- Select Judge --';
+    selectElement.appendChild(placeholderOption);
+    
+    // Use global CSV data if available
+    var judges = [];
+    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
+        judges = csvJudges;
+    } else {
+        // Fallback judges
+        judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+    }
+    
+    // Add each judge option
+    judges.forEach(function(judgeName) {
+        var option = document.createElement('option');
+        option.value = judgeName;
+        option.textContent = judgeName;
+        if (judgeName === currentValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+    
+    // Visual indicator
+    selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
+    
+    console.log('✅ Populated judge dropdown:', selectElement.id, 'with', judges.length, 'judges');
+}
 
 // Populate all dropdowns with CSV data
 function populateAllDropdowns() {
@@ -197,50 +310,6 @@ function populateAllDropdowns() {
     });
     
     console.log('✅ All dropdowns populated');
-}
-    
-    classes.forEach(function(className) {
-        var option = document.createElement('option');
-        option.value = className;
-        option.textContent = className;
-        if (className === currentValue) {
-            option.selected = true;
-        }
-        selectElement.appendChild(option);
-    });
-    
-    // Visual indicator
-    selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
-}
-
-// Populate a single judge dropdown
-function populateJudgeDropdown(selectElement) {
-    if (!selectElement) return;
-    
-    var currentValue = selectElement.value;
-    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
-    
-    // Use global CSV data if available
-    var judges = [];
-    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
-        judges = csvJudges;
-    } else {
-        // Fallback judges
-        judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
-    }
-    
-    judges.forEach(function(judgeName) {
-        var option = document.createElement('option');
-        option.value = judgeName;
-        option.textContent = judgeName;
-        if (judgeName === currentValue) {
-            option.selected = true;
-        }
-        selectElement.appendChild(option);
-    });
-    
-    // Visual indicator
-    selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
 }
 
 // ===== CONFIGURATION COLLECTION =====
@@ -454,10 +523,8 @@ function debugTrialSetup() {
 window.debugTrialSetup = debugTrialSetup;
 window.populateAllDropdowns = populateAllDropdowns;
 window.collectTrialConfiguration = collectTrialConfiguration;
-// Quick fix for the HTML reference error
-// Add this to the end of your js/trial-setup.js file or run in console
 
-// Create the missing function that your HTML is trying to call
+// Quick fix for the HTML reference error
 function initializeTrialSetup() {
     console.log('✅ Trial setup initialized via HTML call');
     
@@ -492,245 +559,15 @@ function fixHTMLReferences() {
 // Auto-run the fix
 fixHTMLReferences();
 
-console.log('✅ HTML compatibility functions added');
-console.log('✅ Clean Trial Setup JS loaded - No conflicts!');
-// ADD this to the END of js/trial-setup.js
-
-// Populate a single class dropdown
-// FIX for multiple "Select Class" placeholder text
-// Replace the populateClassDropdown function in js/trial-setup.js
-
-function populateClassDropdown(selectElement) {
-    if (!selectElement) return;
-    
-    // Check if already populated to avoid duplicates
-    if (selectElement.options.length > 1) {
-        console.log('🔄 Class dropdown already populated, skipping:', selectElement.id);
-        return;
-    }
-    
-    var currentValue = selectElement.value;
-    
-    // Clear existing options completely
-    selectElement.innerHTML = '';
-    
-    // Add single placeholder option
-    var placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = '-- Select Class --';
-    selectElement.appendChild(placeholderOption);
-    
-    // Use global CSV data if available
-    var classes = [];
-    if (typeof csvClasses !== 'undefined' && csvClasses.length > 0) {
-        classes = csvClasses;
-        console.log('📚 Using CSV classes:', classes.length);
+// Set up automatic triggering
+setTimeout(function() {
+    var trialDaysSelect = document.getElementById('trialDays') || document.querySelector('input[type="number"]');
+    if (trialDaysSelect) {
+        trialDaysSelect.onchange = generateDays;
+        console.log('✅ Attached generateDays to days selector');
     } else {
-        // Fallback classes
-        classes = ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
-        console.log('📚 Using fallback classes');
+        console.log('❌ Could not find days selector');
     }
-    
-    // Add each class option
-    classes.forEach(function(className) {
-        var option = document.createElement('option');
-        option.value = className;
-        option.textContent = className;
-        if (className === currentValue) {
-            option.selected = true;
-        }
-        selectElement.appendChild(option);
-    });
-    
-    // Visual indicator
-    selectElement.style.borderColor = classes.length > 3 ? '#28a745' : '#ffc107';
-    
-    console.log('✅ Populated class dropdown:', selectElement.id, 'with', classes.length, 'classes');
-}
+}, 1000);
 
-// Also fix the judge dropdown to prevent duplicates
-function populateJudgeDropdown(selectElement) {
-    if (!selectElement) return;
-    
-    // Check if already populated to avoid duplicates
-    if (selectElement.options.length > 1) {
-        console.log('🔄 Judge dropdown already populated, skipping:', selectElement.id);
-        return;
-    }
-    
-    var currentValue = selectElement.value;
-    
-    // Clear existing options completely
-    selectElement.innerHTML = '';
-    
-    // Add single placeholder option
-    var placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = '-- Select Judge --';
-    selectElement.appendChild(placeholderOption);
-    
-    // Use global CSV data if available
-    var judges = [];
-    if (typeof csvJudges !== 'undefined' && csvJudges.length > 0) {
-        judges = csvJudges;
-        console.log('👨‍⚖️ Using CSV judges:', judges.length);
-    } else {
-        // Fallback judges
-        judges = ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
-        console.log('👨‍⚖️ Using fallback judges');
-    }
-    
-    // Add each judge option
-    judges.forEach(function(judgeName) {
-        var option = document.createElement('option');
-        option.value = judgeName;
-        option.textContent = judgeName;
-        if (judgeName === currentValue) {
-            option.selected = true;
-        }
-        selectElement.appendChild(option);
-    });
-    
-    // Visual indicator
-    selectElement.style.borderColor = judges.length > 3 ? '#28a745' : '#ffc107';
-    
-    console.log('✅ Populated judge dropdown:', selectElement.id, 'with', judges.length, 'judges');
-}
-
-// Enhanced populateAllDropdowns to prevent multiple calls
-function populateAllDropdowns() {
-    console.log('🔄 Starting dropdown population...');
-    
-    // Populate class dropdowns (only unpopulated ones)
-    var classDropdowns = document.querySelectorAll('select[data-type="class"]');
-    var classCount = 0;
-    classDropdowns.forEach(function(select) {
-        if (select.options.length <= 1) { // Only populate if not already populated
-            populateClassDropdown(select);
-            classCount++;
-        }
-    });
-    
-    // Populate judge dropdowns (only unpopulated ones)
-    var judgeDropdowns = document.querySelectorAll('select[data-type="judge"]');
-    var judgeCount = 0;
-    judgeDropdowns.forEach(function(select) {
-        if (select.options.length <= 1) { // Only populate if not already populated
-            populateJudgeDropdown(select);
-            judgeCount++;
-        }
-    });
-    
-    console.log('✅ Populated', classCount, 'class dropdowns and', judgeCount, 'judge dropdowns');
-}
-
-// Fix the generateSingleClass function to not create duplicate placeholders
-function generateSingleClass(dayNum, classNum) {
-    return `
-        <div class="class-setup" style="background: #fff3cd; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #ffc107;">
-            <h6 style="margin: 0 0 20px 0; color: #856404; font-weight: bold;">Class ${classNum}</h6>
-            
-            <!-- Class Name and Rounds Selection -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">Class Name:</label>
-                    <select id="day${dayNum}_class${classNum}_name" 
-                            data-type="class"
-                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
-                        <!-- Options will be populated by JavaScript -->
-                    </select>
-                </div>
-                
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">How Many Rounds:</label>
-                    <select id="day${dayNum}_class${classNum}_rounds" 
-                            onchange="generateRoundsForClass(${dayNum}, ${classNum})"
-                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">
-                        <option value="">How Many Rounds</option>
-                        <option value="1">1 Round</option>
-                        <option value="2">2 Rounds</option>
-                        <option value="3">3 Rounds</option>
-                        <option value="4">4 Rounds</option>
-                        <option value="5">5 Rounds</option>
-                        <option value="6">6 Rounds</option>
-                        <option value="7">7 Rounds</option>
-                        <option value="8">8 Rounds</option>
-                        <option value="9">9 Rounds</option>
-                        <option value="10">10 Rounds</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Rounds Container - Judges will be created here -->
-            <div id="day${dayNum}_class${classNum}_rounds_container">
-                <p style="color: #666; font-style: italic; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc;">
-                    Select number of rounds above to configure judges for each round
-                </p>
-            </div>
-        </div>
-    `;
-}
-
-// Immediate fix function - run this to fix current dropdowns
-function fixCurrentDropdowns() {
-    console.log('🔧 Fixing current dropdowns...');
-    
-    // Find all class dropdowns and fix them
-    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
-        // Remove duplicate options
-        var seenOptions = new Set();
-        var optionsToRemove = [];
-        
-        for (var i = 0; i < select.options.length; i++) {
-            var option = select.options[i];
-            var optionText = option.textContent;
-            
-            if (seenOptions.has(optionText)) {
-                optionsToRemove.push(option);
-            } else {
-                seenOptions.add(optionText);
-            }
-        }
-        
-        // Remove duplicates
-        optionsToRemove.forEach(function(option) {
-            option.remove();
-        });
-        
-        console.log('✅ Fixed class dropdown:', select.id);
-    });
-    
-    // Find all judge dropdowns and fix them
-    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
-        // Remove duplicate options
-        var seenOptions = new Set();
-        var optionsToRemove = [];
-        
-        for (var i = 0; i < select.options.length; i++) {
-            var option = select.options[i];
-            var optionText = option.textContent;
-            
-            if (seenOptions.has(optionText)) {
-                optionsToRemove.push(option);
-            } else {
-                seenOptions.add(optionText);
-            }
-        }
-        
-        // Remove duplicates
-        optionsToRemove.forEach(function(option) {
-            option.remove();
-        });
-        
-        console.log('✅ Fixed judge dropdown:', select.id);
-    });
-    
-    console.log('✅ All current dropdowns fixed!');
-}
-
-// Console command to run immediately
-console.log('💡 Run fixCurrentDropdowns() to fix existing dropdowns');
-console.log('💡 Updated functions will prevent future duplicates');
-
-// Auto-run the fix
-setTimeout(fixCurrentDropdowns, 1000);
+console.log('✅ Complete Trial Setup JS loaded - Fixed for duplicate placeholders!');
