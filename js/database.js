@@ -875,7 +875,7 @@ function parseCSVData(csvText) {
         }
     });
 
-    csvClasses.sort();
+   
     csvJudges.sort();
 
     console.log('✅ CSV Parsing Complete:');
