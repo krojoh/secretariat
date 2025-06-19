@@ -488,6 +488,7 @@ function editTrial(trialId) {
     alert('✅ Trial "' + trial.name + '" loaded for editing!\nAll original selections have been restored.');
 }
 
+// Enhanced populateTrialEditForm function - ADD this to js/database.js or replace existing one
 function populateTrialEditForm(trial) {
     if (!trial) return;
     
@@ -518,6 +519,16 @@ function populateTrialEditForm(trial) {
             }
         }
     }
+    
+    // Populate class configurations after form generation
+    if (trial.config && trial.config.length > 0) {
+        setTimeout(function() {
+            populateEditModeSelections(trial.config);
+        }, 1000); // Wait for form to be fully generated
+    }
+    
+    console.log('✅ Trial form populated with original data');
+}
     
     // Populate class configurations after form generation
     if (trial.config && trial.config.length > 0) {
