@@ -753,3 +753,529 @@ function loadEntryFormTabWithTrialSelection() { console.log('Entry form tab load
 function loadResultsTabWithTrialSelection() { console.log('Results tab loaded'); }
 function updateAllDisplays() { if (typeof loadUserTrials === 'function') loadUserTrials(); }
 function saveTrialUpdates() { return saveTrialConfiguration(); }
+// FIXED COMBO DROPDOWN + AUTO-COMPLETE SYSTEM
+// This preserves the dropdown while adding auto-complete functionality
+
+// Enhanced CSV parser that preserves ALL classes and judges
+function parseCSVData(csvText) {
+    csvJudges = [];
+    csvClasses = [];
+    csvData = [];
+    
+    const lines = csvText.split('\n');
+    console.log('📄 Processing CSV with ' + lines.length + ' total lines');
+    
+    let successfulParses = 0;
+    let skippedLines = 0;
+    let judgeSet = new Set();
+    let classSet = new Set();
+    
+    lines.forEach((line, index) => {
+        line = line.trim();
+        if (!line) return;
+        
+        try {
+            // Skip header line
+            if (line.toLowerCase().includes('registration') && line.toLowerCase().includes('call name')) {
+                console.log('📋 Skipping header line');
+                skippedLines++;
+                return;
+            }
+            
+            // Parse CSV format: Registration,Call Name,Handler,Class,Judges
+            const parts = line.split(',').map(part => part.trim());
+            
+            if (parts.length >= 5) {
+                const registration = parts[0];
+                const callName = parts[1];
+                const handler = parts[2];
+                const className = parts[3];
+                const judgeName = parts[4];
+                
+                // More flexible registration validation
+                if (registration && (registration.match(/^\d{2}-\d{4}-\d{2}/) || registration.length >= 8)) {
+                    
+                    // Process class name - preserve ALL unique classes
+                    if (className && className.length > 0) {
+                        const cleanClassName = className.replace(/\s+/g, ' ').trim();
+                        if (cleanClassName && !classSet.has(cleanClassName)) {
+                            classSet.add(cleanClassName);
+                            csvClasses.push(cleanClassName);
+                            console.log('📚 Added class:', cleanClassName);
+                        }
+                    }
+                    
+                    // Process judge name - preserve ALL unique judges
+                    if (judgeName && judgeName.length > 1) {
+                        let cleanJudgeName = judgeName
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .replace(/[""'']/g, '')
+                            .replace(/\.$/, '');
+                        
+                        // More lenient judge validation
+                        if (cleanJudgeName.length > 2 && cleanJudgeName.match(/[A-Za-z]/)) {
+                            if (!judgeSet.has(cleanJudgeName)) {
+                                judgeSet.add(cleanJudgeName);
+                                csvJudges.push(cleanJudgeName);
+                                console.log('👨‍⚖️ Added judge:', cleanJudgeName);
+                            }
+                        }
+                    }
+                    
+                    // Store complete record for auto-fill
+                    csvData.push({
+                        registration: registration,
+                        callName: callName,
+                        handler: handler,
+                        className: className,
+                        judgeName: judgeName,
+                        lineNumber: index + 1
+                    });
+                    
+                    successfulParses++;
+                }
+            } else {
+                console.log('⚠️ Skipping line ' + (index + 1) + ' - insufficient parts:', parts.length);
+                skippedLines++;
+            }
+            
+        } catch (error) {
+            console.log('❌ Error parsing line ' + (index + 1) + ':', error.message);
+            skippedLines++;
+        }
+    });
+    
+    // Sort classes and judges alphabetically for better UX
+    csvClasses.sort();
+    csvJudges.sort();
+    
+    console.log('✅ CSV Parsing Complete:');
+    console.log('📊 Total lines processed:', lines.length);
+    console.log('✅ Successfully parsed:', successfulParses);
+    console.log('⏭️ Skipped lines:', skippedLines);
+    console.log('📚 Total unique classes found:', csvClasses.length);
+    console.log('👨‍⚖️ Total unique judges found:', csvJudges.length);
+    
+    // Show first few classes and judges for verification
+    console.log('📚 First 10 classes:', csvClasses.slice(0, 10));
+    console.log('👨‍⚖️ First 10 judges:', csvJudges.slice(0, 10));
+    
+    // Store registration data for auto-fill
+    window.registrationDatabase = {};
+    csvData.forEach(function(record) {
+        if (record.registration) {
+            window.registrationDatabase[record.registration] = {
+                dogName: record.callName,
+                handlerName: record.handler,
+                className: record.className,
+                judgeName: record.judgeName
+            };
+        }
+    });
+    
+    console.log('📝 Registration database created with', Object.keys(window.registrationDatabase).length, 'records');
+}
+
+// Enhanced combo dropdown that keeps the select AND adds autocomplete
+function enhanceDropdownWithAutoComplete(selectElement, dropdownType) {
+    if (!selectElement || selectElement.dataset.enhanced) {
+        return;
+    }
+    
+    console.log('🔧 Enhancing ' + dropdownType + ' dropdown:', selectElement.id);
+    
+    // Mark as enhanced
+    selectElement.dataset.enhanced = 'true';
+    
+    // Keep the original select visible but add autocomplete overlay
+    var container = document.createElement('div');
+    container.className = 'combo-autocomplete-container';
+    container.style.cssText = 'position: relative; width: 100%;';
+    
+    // Insert container around the select
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    
+    // Create autocomplete input overlay
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'autocomplete-overlay';
+    input.placeholder = 'Type to search or click dropdown arrow...';
+    
+    // Disable browser autocomplete
+    input.setAttribute('autocomplete', 'new-password');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+    
+    // Style the input to look like it's part of the select
+    input.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 30px;
+        height: 100%;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        font-size: inherit;
+        font-family: inherit;
+        z-index: 10;
+        box-sizing: border-box;
+    `;
+    
+    // Create dropdown list for filtered results
+    var dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-results';
+    dropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    `;
+    
+    container.appendChild(input);
+    container.appendChild(dropdown);
+    
+    // Get all options except the first placeholder
+    var allOptions = Array.from(selectElement.options).slice(1);
+    console.log('📋 Options available for ' + dropdownType + ':', allOptions.length);
+    
+    // Function to populate the autocomplete dropdown
+    function populateAutocompleteResults(filteredOptions, searchTerm) {
+        dropdown.innerHTML = '';
+        
+        if (filteredOptions.length === 0) {
+            var noResults = document.createElement('div');
+            noResults.textContent = searchTerm ? `No ${dropdownType}s found matching "${searchTerm}"` : `No ${dropdownType}s available`;
+            noResults.style.cssText = 'padding: 12px; color: #666; font-style: italic; text-align: center;';
+            dropdown.appendChild(noResults);
+        } else {
+            filteredOptions.forEach(function(option, index) {
+                var item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.style.cssText = `
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f0f0f0;
+                    transition: background-color 0.2s;
+                `;
+                
+                // Highlight matching text
+                var displayText = option.text;
+                if (searchTerm && searchTerm.length > 0) {
+                    var regex = new RegExp('(' + searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    displayText = option.text.replace(regex, '<mark style="background: #ffeb3b; padding: 0 2px; border-radius: 2px;">$1</mark>');
+                }
+                item.innerHTML = displayText;
+                
+                // Hover effects
+                item.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#e3f2fd';
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+                
+                // Click to select
+                item.addEventListener('click', function() {
+                    selectOption(option);
+                });
+                
+                dropdown.appendChild(item);
+            });
+        }
+    }
+    
+    // Function to select an option
+    function selectOption(option) {
+        console.log('✅ Selected ' + dropdownType + ':', option.text);
+        
+        // Update both the select and input
+        selectElement.value = option.value;
+        input.value = option.text;
+        
+        // Hide dropdown
+        dropdown.style.display = 'none';
+        
+        // Visual feedback
+        input.style.backgroundColor = '#d4edda';
+        setTimeout(function() {
+            input.style.backgroundColor = '';
+        }, 1000);
+        
+        // Trigger change event on the original select
+        var changeEvent = new Event('change', { bubbles: true });
+        selectElement.dispatchEvent(changeEvent);
+    }
+    
+    // Input event for filtering
+    input.addEventListener('input', function() {
+        var searchTerm = this.value.toLowerCase().trim();
+        
+        console.log('🔍 Searching ' + dropdownType + ' for:', searchTerm);
+        
+        if (searchTerm === '') {
+            dropdown.style.display = 'none';
+            selectElement.value = '';
+            return;
+        }
+        
+        // Filter options
+        var filteredOptions = allOptions.filter(function(option) {
+            var optionText = option.text.toLowerCase();
+            return optionText.includes(searchTerm) || 
+                   optionText.split(' ').some(word => word.startsWith(searchTerm));
+        });
+        
+        // Sort by relevance (exact matches first)
+        filteredOptions.sort(function(a, b) {
+            var aText = a.text.toLowerCase();
+            var bText = b.text.toLowerCase();
+            var aExact = aText.startsWith(searchTerm);
+            var bExact = bText.startsWith(searchTerm);
+            
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            return aText.localeCompare(bText);
+        });
+        
+        console.log('📋 Found ' + filteredOptions.length + ' matches for "' + searchTerm + '"');
+        
+        populateAutocompleteResults(filteredOptions, searchTerm);
+        dropdown.style.display = 'block';
+    });
+    
+    // Focus event
+    input.addEventListener('focus', function() {
+        console.log('📍 ' + dropdownType + ' input focused');
+        
+        if (this.value === '' && allOptions.length > 0) {
+            populateAutocompleteResults(allOptions, '');
+            dropdown.style.display = 'block';
+        }
+    });
+    
+    // Blur event (delayed to allow for clicks)
+    input.addEventListener('blur', function() {
+        setTimeout(function() {
+            dropdown.style.display = 'none';
+        }, 200);
+    });
+    
+    // Keyboard navigation
+    input.addEventListener('keydown', function(e) {
+        var items = dropdown.querySelectorAll('.autocomplete-item');
+        var selectedIndex = -1;
+        
+        // Find currently highlighted item
+        items.forEach(function(item, index) {
+            if (item.style.backgroundColor === 'rgb(227, 242, 253)') {
+                selectedIndex = index;
+            }
+        });
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                var nextIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+                highlightItem(items, nextIndex);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                var prevIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+                highlightItem(items, prevIndex);
+                break;
+                
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    items[selectedIndex].click();
+                }
+                break;
+                
+            case 'Escape':
+                dropdown.style.display = 'none';
+                this.blur();
+                break;
+        }
+    });
+    
+    // Helper function to highlight items
+    function highlightItem(items, index) {
+        items.forEach(function(item, i) {
+            if (i === index) {
+                item.style.backgroundColor = '#e3f2fd';
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.style.backgroundColor = '';
+            }
+        });
+    }
+    
+    // Allow clicking on the select dropdown arrow to work normally
+    selectElement.addEventListener('change', function() {
+        if (this.value) {
+            var selectedOption = this.options[this.selectedIndex];
+            input.value = selectedOption.text;
+            console.log('✅ Selected via dropdown:', selectedOption.text);
+        }
+    });
+    
+    // Hide autocomplete when select is clicked
+    selectElement.addEventListener('focus', function() {
+        dropdown.style.display = 'none';
+    });
+    
+    console.log('✅ Enhanced ' + dropdownType + ' dropdown with combo autocomplete');
+}
+
+// Enhanced populate functions that preserve ALL options
+function populateClassDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    console.log('📚 Populating class dropdown with', csvClasses.length, 'classes');
+    
+    // Use ALL CSV classes or fallback
+    var classes = csvClasses.length > 0 ? csvClasses : 
+        ["Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv"];
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Add ALL classes
+    classes.forEach(function(className) {
+        var option = document.createElement('option');
+        option.value = className;
+        option.textContent = className;
+        if (className === currentValue) option.selected = true;
+        selectElement.appendChild(option);
+    });
+    
+    console.log('📚 Added ' + classes.length + ' class options');
+    
+    // Enhance with autocomplete
+    setTimeout(function() {
+        enhanceDropdownWithAutoComplete(selectElement, 'class');
+    }, 100);
+}
+
+function populateJudgeDropdown(selectElement) {
+    if (!selectElement) return;
+    
+    console.log('👨‍⚖️ Populating judge dropdown with', csvJudges.length, 'judges');
+    
+    // Use ALL CSV judges or fallback
+    var judges = csvJudges.length > 0 ? csvJudges : 
+        ["Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames"];
+    
+    var currentValue = selectElement.value;
+    selectElement.innerHTML = '<option value="">-- Select Judge --</option>';
+    
+    // Add ALL judges
+    judges.forEach(function(judgeName) {
+        var option = document.createElement('option');
+        option.value = judgeName;
+        option.textContent = judgeName;
+        if (judgeName === currentValue) option.selected = true;
+        selectElement.appendChild(option);
+    });
+    
+    console.log('👨‍⚖️ Added ' + judges.length + ' judge options');
+    
+    // Enhance with autocomplete
+    setTimeout(function() {
+        enhanceDropdownWithAutoComplete(selectElement, 'judge');
+    }, 100);
+}
+
+// Single unified populate all function
+function populateAllDropdowns() {
+    console.log('🔄 Populating all dropdowns...');
+    
+    document.querySelectorAll('select[data-type="class"]').forEach(function(select) {
+        populateClassDropdown(select);
+    });
+    
+    document.querySelectorAll('select[data-type="judge"]').forEach(function(select) {
+        populateJudgeDropdown(select);
+    });
+    
+    console.log('✅ All dropdowns populated with combo autocomplete');
+}
+
+// Enhanced CSV loading with better error handling
+async function loadCSVData() {
+    try {
+        console.log('📡 Loading CSV data from data/dogs.csv...');
+        const response = await fetch('data/dogs.csv');
+        if (!response.ok) throw new Error('CSV not found: ' + response.status);
+        
+        const csvText = await response.text();
+        console.log('✅ CSV loaded successfully, size:', Math.round(csvText.length / 1024) + ' KB');
+        
+        parseCSVData(csvText);
+        
+        // Auto-populate existing dropdowns
+        setTimeout(function() {
+            populateAllDropdowns();
+        }, 500);
+        
+    } catch (error) {
+        console.warn('❌ CSV loading failed:', error.message);
+        console.log('🔄 Using default data instead');
+        useDefaultData();
+    }
+}
+
+function useDefaultData() {
+    csvJudges = [
+        "Linda Alberda", "Ginger Alpine", "Paige Alpine-Malone", "Anita Ambani", "Denise Ames",
+        "Sharon Anderson", "Terry Arnold", "Susan Ashworth", "Pat Baker", "Mary Bax"
+    ];
+    csvClasses = [
+        "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
+        "Novice A", "Novice B", "Open A", "Open B", "Utility A", "Utility B"
+    ];
+    
+    console.log('✅ Default data loaded:', csvClasses.length, 'classes,', csvJudges.length, 'judges');
+}
+
+// Debug function to check what's loaded
+function debugDropdownData() {
+    console.log('🔍 DROPDOWN DATA DEBUG:');
+    console.log('CSV Classes (' + csvClasses.length + '):', csvClasses);
+    console.log('CSV Judges (' + csvJudges.length + '):', csvJudges);
+    
+    var classSelects = document.querySelectorAll('select[data-type="class"]');
+    var judgeSelects = document.querySelectorAll('select[data-type="judge"]');
+    
+    console.log('Class dropdowns found:', classSelects.length);
+    console.log('Judge dropdowns found:', judgeSelects.length);
+    
+    if (classSelects.length > 0) {
+        console.log('First class dropdown options:', classSelects[0].options.length);
+    }
+    
+    if (judgeSelects.length > 0) {
+        console.log('First judge dropdown options:', judgeSelects[0].options.length);
+    }
+}
+
+// Make debug function available globally
+window.debugDropdownData = debugDropdownData;
+
+console.log('✅ Fixed Combo Dropdown + Auto-Complete System Loaded');
+console.log('💡 Run debugDropdownData() to check loaded data');
