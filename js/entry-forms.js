@@ -368,9 +368,9 @@ function parseCSVForEntryData(csvText) {
             // Method to parse the combined string
             // Look for class patterns to split the string
             const classPatterns = [
-                'Patrol', 'Detective', 'Investigator', 'Super Sleuth', 'Private Inv',
-                'Novice', 'Open', 'Excellent', 'Masters', 'FAST', 'Jumpers',
-                'Standard', 'Premier', 'Wildcard', 'Snooker', 'Gamblers'
+                 "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv", "Det Diversions", "Ranger 1", "Ranger 2", "Ranger 3", "Ranger 4",
+         "Ranger 5", "Dasher 3", "Dasher 4", "Dasher 5", "Dasher 6", "Obedience 1", "Obedience 2", "Obedience 3", "Obedience 4", "Starter", "Advanced", "Pro",
+        "ARF", "Zoom 1", "Zoom 1.5", "Zoom 2", "Games 1", "Games 2", "Games 3", "Games 4"
             ];
             
             let classFound = false;
