@@ -182,6 +182,8 @@ async function loadCSVData() {
 
 // EXACT CSV PARSER FOR YOUR FORMAT - Replace parseCSVData function in js/database.js
 
+// REPLACE the parseCSVData function in js/database.js with this enhanced version
+
 function parseCSVData(csvText) {
     csvJudges = [];
     csvClasses = [];
@@ -189,19 +191,20 @@ function parseCSVData(csvText) {
     
     const lines = csvText.split('\n');
     console.log('📄 Processing CSV with ' + lines.length + ' total lines');
-    console.log('📋 Expected format: Registration, Call Name, Handler, Class, Judges');
     
     let successfulParses = 0;
     let skippedLines = 0;
+    let judgeSet = new Set(); // Use Set to avoid duplicates but preserve order
+    let classSet = new Set();
     
     lines.forEach((line, index) => {
         line = line.trim();
         if (!line) return;
         
         try {
-            // Skip header line if it exists
+            // Skip header line
             if (line.toLowerCase().includes('registration') && line.toLowerCase().includes('call name')) {
-                console.log('📋 Skipping header line:', line);
+                console.log('📋 Skipping header line');
                 skippedLines++;
                 return;
             }
@@ -216,18 +219,38 @@ function parseCSVData(csvText) {
                 const className = parts[3];
                 const judgeName = parts[4];
                 
-                // Validate data
-                if (registration && className && judgeName) {
-                    // Add class to list (preserving original order - NO SORTING)
-                    if (className && !csvClasses.includes(className)) {
-                        csvClasses.push(className);
-                        console.log('➕ Added class:', className, '(position ' + csvClasses.length + ')');
+                // More robust validation and cleaning
+                if (registration && registration.match(/^\d{2}-\d{4}-\d{2}/)) {
+                    
+                    // Process class name
+                    if (className && className.length > 0) {
+                        // Clean up class name (remove extra spaces, standardize)
+                        const cleanClassName = className.replace(/\s+/g, ' ').trim();
+                        if (cleanClassName && !classSet.has(cleanClassName)) {
+                            classSet.add(cleanClassName);
+                            csvClasses.push(cleanClassName);
+                        }
                     }
                     
-                    // Add judge to list (preserving original order - NO SORTING)  
-                    if (judgeName && !csvJudges.includes(judgeName)) {
-                        csvJudges.push(judgeName);
-                        console.log('➕ Added judge:', judgeName, '(position ' + csvJudges.length + ')');
+                    // Process judge name with enhanced cleaning
+                    if (judgeName && judgeName.length > 1) {
+                        // Clean up judge name
+                        let cleanJudgeName = judgeName
+                            .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+                            .trim()                // Remove leading/trailing spaces
+                            .replace(/[""'']/g, '') // Remove quotes
+                            .replace(/\.$/, '');    // Remove trailing period
+                        
+                        // Additional validation - must look like a name
+                        if (cleanJudgeName.length > 2 && 
+                            cleanJudgeName.match(/[A-Za-z]/) && 
+                            !cleanJudgeName.match(/^[\d\s]*$/)) { // Not just numbers and spaces
+                            
+                            if (!judgeSet.has(cleanJudgeName)) {
+                                judgeSet.add(cleanJudgeName);
+                                csvJudges.push(cleanJudgeName);
+                            }
+                        }
                     }
                     
                     // Store complete record
@@ -241,59 +264,22 @@ function parseCSVData(csvText) {
                     });
                     
                     successfulParses++;
-                } else {
-                    if (index < 10) { // Only log first 10 issues
-                        console.warn('⚠️ Line ' + (index + 1) + ' missing required data:', {
-                            registration: registration,
-                            className: className,
-                            judgeName: judgeName
-                        });
-                    }
                 }
             } else {
-                if (index < 10) { // Only log first 10 format issues
-                    console.warn('⚠️ Line ' + (index + 1) + ' has wrong format (expected 5 columns, got ' + parts.length + '):', line);
-                }
                 skippedLines++;
             }
             
         } catch (error) {
-            if (index < 10) { // Only log first 10 errors
-                console.error('❌ Error parsing line ' + (index + 1) + ':', error.message);
-            }
             skippedLines++;
         }
     });
     
-    // DO NOT SORT - preserve original order from CSV
     console.log('✅ CSV Parsing Complete:');
     console.log('📊 Total lines processed:', lines.length);
     console.log('✅ Successfully parsed:', successfulParses);
     console.log('⏭️ Skipped lines:', skippedLines);
-    console.log('📚 Classes found (in original order):', csvClasses.length);
-    console.log('👨‍⚖️ Judges found (in original order):', csvJudges.length);
-    
-    // Show first 20 classes in order
-    console.log('📋 First 20 classes (in CSV order):');
-    csvClasses.slice(0, 20).forEach((className, index) => {
-        console.log(`  ${index + 1}. ${className}`);
-    });
-    
-    // Show first 20 judges in order
-    console.log('👥 First 20 judges (in CSV order):');
-    csvJudges.slice(0, 20).forEach((judgeName, index) => {
-        console.log(`  ${index + 1}. ${judgeName}`);
-    });
-    
-    // Show some sample complete records
-    console.log('📝 Sample complete records:');
-    csvData.slice(0, 5).forEach((record, index) => {
-        console.log(`  ${index + 1}. ${record.registration} | ${record.callName} | ${record.handler} | ${record.className} | ${record.judgeName}`);
-    });
-    
-    if (successfulParses < 100) {
-        console.warn('⚠️ Low success count. Check if CSV format matches expected structure.');
-    }
+    console.log('📚 Unique classes found (in original order):', csvClasses.length);
+    console.log('👨‍⚖️ Unique judges found (in original order):', csvJudges.length);
 }
 
 // Enhanced populate functions that preserve order
