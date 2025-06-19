@@ -168,7 +168,7 @@ function showTab(tabName, element) {
 // ===== CSV DATA MANAGEMENT =====
 async function loadCSVData() {
     try {
-        const response = await fetch('data/dogs.csv');
+        const response = await fetch('dogs.csv');
         if (!response.ok) throw new Error('CSV not found');
         
         const csvText = await response.text();
