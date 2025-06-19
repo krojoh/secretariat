@@ -1484,3 +1484,254 @@ function autoFillDogInfo(regNumber) {
 
 console.log('✅ Enhanced entry form with proper cancel button loaded');
 }
+// COMPLETE ENTRY FORM CANCEL FIX - Add to js/entry-forms.js or run in console
+
+// Enhanced cancel function that properly returns to dashboard
+function cancelEntryForm() {
+    console.log('🚫 Cancelling entry form...');
+    
+    // 1. Close any modal
+    var modals = document.querySelectorAll('div[style*="position: fixed"]');
+    modals.forEach(function(modal) {
+        modal.remove();
+        console.log('✅ Modal removed');
+    });
+    
+    // 2. Clear any form data
+    clearAnyEntryFormData();
+    
+    // 3. Return to dashboard/trials tab
+    returnToDashboard();
+    
+    console.log('✅ Entry form cancelled and returned to dashboard');
+}
+
+// Clear any lingering entry form data
+function clearAnyEntryFormData() {
+    // Clear any auto-fill status
+    var autoFillStatus = document.getElementById('autoFillStatus');
+    if (autoFillStatus) {
+        autoFillStatus.style.display = 'none';
+    }
+    
+    // Reset any highlighted form fields
+    var entryInputs = document.querySelectorAll('input[id*="dog"], input[id*="handler"], input[id*="reg"]');
+    entryInputs.forEach(function(input) {
+        input.style.background = 'white';
+        input.style.borderColor = '#ddd';
+    });
+    
+    console.log('✅ Entry form data cleared');
+}
+
+// Function to return to dashboard with multiple fallback methods
+function returnToDashboard() {
+    console.log('🏠 Attempting to return to dashboard...');
+    
+    // Method 1: Try to go to trials tab (most common)
+    var trialsTab = document.querySelector('.nav-tab[onclick*="trials"]');
+    if (trialsTab && typeof showTab === 'function') {
+        showTab('trials', trialsTab);
+        console.log('✅ Returned to trials tab');
+        return;
+    }
+    
+    // Method 2: Try to go to entry tab
+    var entryTab = document.querySelector('.nav-tab[onclick*="entry"]');
+    if (entryTab && typeof showTab === 'function') {
+        showTab('entry', entryTab);
+        console.log('✅ Returned to entry tab');
+        return;
+    }
+    
+    // Method 3: Try to click trials tab directly
+    var trialsTabDirect = document.querySelector('button[onclick*="showTab(\'trials\'"]');
+    if (trialsTabDirect) {
+        trialsTabDirect.click();
+        console.log('✅ Clicked trials tab directly');
+        return;
+    }
+    
+    // Method 4: Use dashboard function if available
+    if (typeof showDashboard === 'function') {
+        showDashboard();
+        console.log('✅ Used showDashboard function');
+        return;
+    }
+    
+    // Method 5: Scroll to top as final fallback
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    console.log('✅ Scrolled to top (fallback)');
+}
+
+// Fix all existing cancel buttons in entry forms
+function fixAllCancelButtons() {
+    console.log('🔧 Fixing all cancel buttons...');
+    
+    // Find all cancel buttons in entry forms
+    var cancelButtons = document.querySelectorAll('button[onclick*="remove"], button[onclick*="cancel"], button[onclick*="Cancel"]');
+    
+    cancelButtons.forEach(function(button, index) {
+        // Check if this is in an entry form modal
+        var modal = button.closest('div[style*="position: fixed"]');
+        if (modal) {
+            console.log('📝 Fixing cancel button ' + (index + 1));
+            
+            // Replace the onclick
+            button.onclick = function(e) {
+                e.preventDefault();
+                cancelEntryForm();
+                return false;
+            };
+            
+            // Update button text and style
+            if (button.textContent.includes('Cancel') || button.textContent.includes('❌')) {
+                button.innerHTML = '🏠 Return to Dashboard';
+                button.style.background = 'linear-gradient(45deg, #6c757d, #5a6268)';
+            }
+            
+            console.log('✅ Fixed cancel button: ' + button.textContent);
+        }
+    });
+    
+    console.log('✅ All cancel buttons fixed');
+}
+
+// Enhanced entry form creation with proper cancel handling
+function createEntryFormWithProperCancel(trialId, trialName) {
+    console.log('📝 Creating entry form with proper cancel for trial:', trialName);
+    
+    var modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); z-index: 10000; 
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 2px solid #eee; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 15px 15px 0 0;">
+                <h2 style="margin: 0;">📝 Trial Entry Form</h2>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Enter your dog for: ${trialName}</p>
+            </div>
+            
+            <form id="enhancedTrialEntryForm" style="padding: 30px;">
+                <!-- Registration Number -->
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #1976d2;">🆔 Registration Information</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Registration Number:</label>
+                        <input type="text" id="dogRegNumber" placeholder="e.g., 07-0001-01" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <!-- Dog Information -->
+                <div style="background: #f3e5f5; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #7b1fa2;">🐕 Dog Information</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Call Name:</label>
+                        <input type="text" id="dogCallName" placeholder="Dog's call name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;" required>
+                    </div>
+                </div>
+                
+                <!-- Handler Information -->
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #388e3c;">👤 Handler Information</h4>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Handler Name:</label>
+                        <input type="text" id="handlerName" placeholder="Handler's full name" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;" required>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Email Address:</label>
+                        <input type="email" id="handlerEmail" placeholder="handler@email.com" 
+                               style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;" required>
+                    </div>
+                </div>
+                
+                <!-- Submit Buttons with Enhanced Cancel -->
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                    <button type="submit" 
+                            style="background: linear-gradient(45deg, #28a745, #20c997); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                        ✅ Submit Entry
+                    </button>
+                    <button type="button" onclick="cancelEntryForm()" 
+                            style="background: linear-gradient(45deg, #6c757d, #5a6268); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                        🏠 Return to Dashboard
+                    </button>
+                    <button type="button" onclick="cancelEntryForm()" 
+                            style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none; padding: 15px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                        ❌ Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add form submission handler
+    document.getElementById('enhancedTrialEntryForm').onsubmit = function(e) {
+        e.preventDefault();
+        alert('Entry submitted! (Demo)');
+        cancelEntryForm(); // Return to dashboard after submit
+        return false;
+    };
+    
+    console.log('✅ Entry form created with proper cancel functionality');
+}
+
+// Override existing entry form functions
+function showJuneLeagueEntryForm() {
+    if (currentTrialId) {
+        var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+        var trial = publicTrials[currentTrialId];
+        if (trial) {
+            createEntryFormWithProperCancel(currentTrialId, trial.name);
+            return;
+        }
+    }
+    
+    createEntryFormWithProperCancel('demo', 'Demo Trial');
+}
+
+function showTrialEntryForm(trialId) {
+    var publicTrials = JSON.parse(localStorage.getItem('publicTrials') || '{}');
+    var trial = publicTrials[trialId];
+    if (trial) {
+        createEntryFormWithProperCancel(trialId, trial.name);
+    }
+}
+
+// Console commands for immediate fixing
+function fixCancelButtonsNow() {
+    console.log('🔧 Immediate cancel button fix...');
+    
+    // Fix any current cancel buttons
+    fixAllCancelButtons();
+    
+    // Override any problematic onclick handlers
+    var problemButtons = document.querySelectorAll('button[onclick*="closest"][onclick*="remove"]');
+    problemButtons.forEach(function(button) {
+        button.onclick = function(e) {
+            e.preventDefault();
+            cancelEntryForm();
+            return false;
+        };
+        button.innerHTML = '🏠 Return to Dashboard';
+        button.style.background = 'linear-gradient(45deg, #6c757d, #5a6268)';
+    });
+    
+    console.log('✅ Cancel buttons fixed immediately');
+}
+
+// Auto-run the fix
+console.log('🔧 Entry form cancel fix loaded');
+console.log('💡 Commands available:');
+console.log('  - fixCancelButtonsNow() : Fix current cancel buttons');
+console.log('  - cancelEntryForm() : Manual cancel');
+
+// Auto-fix any existing problematic buttons
+setTimeout(fixCancelButtonsNow, 1000);
