@@ -2044,5 +2044,263 @@ function showJuneLeagueEntryForm() {
 function showTrialEntryForm(trialId) {
     showEnhancedTrialEntryForm(trialId);
 }
+// MISSING ENTRY FORM FUNCTIONS - Add to js/entry-forms.js or main JS file
 
+// Generate class selection HTML for entry forms
+function generateClassSelectionHTML() {
+    console.log('🏆 Generating class selection HTML');
+    
+    var html = '<div class="class-selection-container">';
+    html += '<label for="entryClass" style="display: block; font-weight: bold; margin-bottom: 8px;">Select Class:</label>';
+    html += '<select id="entryClass" name="entryClass" required style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; font-size: 14px;">';
+    html += '<option value="">-- Select Class --</option>';
+    
+    // Use loaded CSV classes if available
+    if (typeof csvClasses !== 'undefined' && csvClasses && csvClasses.length > 0) {
+        csvClasses.forEach(function(className) {
+            html += '<option value="' + className + '">' + className + '</option>';
+        });
+        console.log('✅ Added ' + csvClasses.length + ' classes to selection');
+    } else {
+        // Fallback classes
+        var fallbackClasses = [
+            "Patrol 1", "Detective 2", "Investigator 3", "Super Sleuth 4", "Private Inv",
+            "Novice A", "Novice B", "Open A", "Open B", "Advanced", "Excellent"
+        ];
+        fallbackClasses.forEach(function(className) {
+            html += '<option value="' + className + '">' + className + '</option>';
+        });
+        console.log('⚠️ Using fallback classes');
+    }
+    
+    html += '</select>';
+    html += '</div>';
+    
+    return html;
+}
+
+// Show entry form for June League trial
+function showJuneLeagueEntryForm() {
+    console.log('📝 Showing June League entry form');
+    
+    // Create modal overlay
+    var overlay = document.createElement('div');
+    overlay.id = 'entryFormOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    
+    // Create form container
+    var formContainer = document.createElement('div');
+    formContainer.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+    
+    // Form HTML
+    formContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #2c5aa0; margin: 0;">📝 Trial Entry Form</h3>
+            <button onclick="closeEntryForm()" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer;">✕ Close</button>
+        </div>
+        
+        <form id="trialEntryForm" onsubmit="submitTrialEntry(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Handler Name:</label>
+                    <input type="text" id="handlerName" name="handlerName" required 
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Dog Name:</label>
+                    <input type="text" id="dogName" name="dogName" required 
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Email:</label>
+                    <input type="email" id="handlerEmail" name="handlerEmail" required 
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Phone:</label>
+                    <input type="tel" id="handlerPhone" name="handlerPhone" 
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                ${generateClassSelectionHTML()}
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Registration Number:</label>
+                    <input type="text" id="regNumber" name="regNumber" 
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Entry Fee:</label>
+                    <input type="text" id="entryFee" name="entryFee" value="$25.00" readonly
+                           style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box; background: #f8f9fa;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Special Requests/Notes:</label>
+                <textarea id="specialRequests" name="specialRequests" rows="3"
+                          style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; box-sizing: border-box; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="text-align: center;">
+                <button type="submit" 
+                        style="background: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-right: 10px;">
+                    🎯 Submit Entry
+                </button>
+                <button type="button" onclick="closeEntryForm()"
+                        style="background: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    `;
+    
+    overlay.appendChild(formContainer);
+    document.body.appendChild(overlay);
+    
+    console.log('✅ Entry form displayed');
+}
+
+// Close entry form
+function closeEntryForm() {
+    var overlay = document.getElementById('entryFormOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+    console.log('✅ Entry form closed');
+}
+
+// Submit trial entry
+function submitTrialEntry(event) {
+    event.preventDefault();
+    
+    console.log('📝 Submitting trial entry...');
+    
+    // Get form data
+    var formData = {
+        handlerName: document.getElementById('handlerName').value,
+        dogName: document.getElementById('dogName').value,
+        handlerEmail: document.getElementById('handlerEmail').value,
+        handlerPhone: document.getElementById('handlerPhone').value,
+        entryClass: document.getElementById('entryClass').value,
+        regNumber: document.getElementById('regNumber').value,
+        entryFee: document.getElementById('entryFee').value,
+        specialRequests: document.getElementById('specialRequests').value,
+        submittedAt: new Date().toISOString(),
+        trialId: currentTrialId || 'june_league'
+    };
+    
+    // Validate required fields
+    if (!formData.handlerName || !formData.dogName || !formData.handlerEmail || !formData.entryClass) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    // Save entry to localStorage
+    var entries = JSON.parse(localStorage.getItem('trialEntries') || '[]');
+    entries.push(formData);
+    localStorage.setItem('trialEntries', JSON.stringify(entries));
+    
+    // Show success message
+    alert('✅ Entry submitted successfully!\n\nHandler: ' + formData.handlerName + '\nDog: ' + formData.dogName + '\nClass: ' + formData.entryClass);
+    
+    // Close form
+    closeEntryForm();
+    
+    // Refresh entry list if on entry management page
+    if (typeof loadTrialEntries === 'function') {
+        loadTrialEntries();
+    }
+    
+    console.log('✅ Trial entry submitted:', formData);
+}
+
+// Fix navigation after saving trial configuration
+function fixTrialNavigationAndRedirect() {
+    console.log('🔄 Fixing trial navigation and redirect...');
+    
+    // Override the save function to include proper redirect
+    var originalSave = window.saveTrialConfiguration;
+    if (originalSave) {
+        window.saveTrialConfiguration = function() {
+            // Call original save function
+            originalSave();
+            
+            // Wait a moment then redirect
+            setTimeout(function() {
+                console.log('📍 Redirecting to dashboard...');
+                
+                // Try to navigate to My Trials tab
+                var myTrialsButton = document.querySelector('button[onclick*="My Trials"], button[onclick*="myTrials"], a[href*="trials"]');
+                if (myTrialsButton) {
+                    myTrialsButton.click();
+                } else {
+                    // Or reload the page to show main dashboard
+                    window.location.hash = '#my-trials';
+                    window.location.reload();
+                }
+            }, 1000);
+        };
+        console.log('✅ Navigation fixed - trials will redirect after save');
+    }
+}
+
+// Initialize missing functions
+function initializeMissingEntryFunctions() {
+    console.log('🔄 Initializing missing entry functions...');
+    
+    // Make functions globally available
+    window.generateClassSelectionHTML = generateClassSelectionHTML;
+    window.showJuneLeagueEntryForm = showJuneLeagueEntryForm;
+    window.closeEntryForm = closeEntryForm;
+    window.submitTrialEntry = submitTrialEntry;
+    
+    // Fix navigation
+    fixTrialNavigationAndRedirect();
+    
+    console.log('✅ Missing entry functions initialized');
+}
+
+// Auto-initialize when script loads
+initializeMissingEntryFunctions();
+
+// Also create link generation for trials
+function generateTrialEntryLink(trialId, trialName) {
+    var baseUrl = window.location.origin + window.location.pathname;
+    var entryUrl = baseUrl + '#entry/' + trialId;
+    
+    console.log('🔗 Generated entry link for:', trialName, '->', entryUrl);
+    return entryUrl;
+}
+
+window.generateTrialEntryLink = generateTrialEntryLink;
+
+console.log('✅ Entry form functions loaded and ready!');
 console.log('✅ Enhanced entry form functions loaded permanently');
